@@ -366,6 +366,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 .backup-hint{font-size:13px;color:var(--text2);line-height:1.4;margin:0;}
 .backup-actions{display:flex;gap:10px;}
 .backup-actions .btn-ok,.backup-actions .btn-outline{flex:1;text-align:center;white-space:nowrap;}
+.settings-version{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);text-align:center;font-size:12px;color:var(--text3);}
 .backup-status{font-size:12px;color:var(--text2);min-height:16px;word-break:break-word;}
 .btn-outline{background:transparent;border:1.5px solid var(--accent);border-radius:var(--radius-sm);color:var(--accent2);padding:9px 20px;font-size:15px;font-family:'Outfit',sans-serif;font-weight:500;cursor:pointer;}
 .modal-btns{flex-wrap:wrap;}
@@ -467,6 +468,7 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
       </div>
       <div class="backup-status" id="backupStatus"></div>
     </div>
+    <div class="settings-version" id="appVersion"></div>
   </div>
 </div>
 
@@ -620,6 +622,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
+const APP_VERSION='1.2', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -740,7 +743,7 @@ function applyTheme(t){
 }
 function openSettings(){document.getElementById('settingsPanel').classList.add('open');document.getElementById('settingsOverlay').classList.add('open');}
 function closeSettings(){document.getElementById('settingsPanel').classList.remove('open');document.getElementById('settingsOverlay').classList.remove('open');}
-function initSettings(){const s=loadSettings();applyTheme(s.theme||'dark');if(s.tagFont){document.getElementById('tagFontSlider').value=s.tagFont;applyTagFont(s.tagFont);}if(s.songFont){document.getElementById('songFontSlider').value=s.songFont;applySongFont(s.songFont);}}
+function initSettings(){document.getElementById('appVersion').textContent='Songbook · versão '+APP_VERSION+' · '+APP_VERSION_DATE;const s=loadSettings();applyTheme(s.theme||'dark');if(s.tagFont){document.getElementById('tagFontSlider').value=s.tagFont;applyTagFont(s.tagFont);}if(s.songFont){document.getElementById('songFontSlider').value=s.songFont;applySongFont(s.songFont);}}
 
 /* ── SWATCHES ── */
 function buildSwatches(){
