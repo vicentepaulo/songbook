@@ -308,6 +308,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 .sym-grid.music{grid-template-columns:repeat(auto-fill,minmax(74px,1fr));}
 .sym-grid.music .sym-opt{min-height:68px;}
 .sym-grid.music .sym-opt span{font-size:10px;line-height:1.15;text-align:center;}
+.sym-toggle{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:14px;cursor:pointer;font-size:13px;color:var(--text2);line-height:1.35;}
+.sym-toggle strong{color:var(--text);}
+.modal .sym-toggle input{width:20px;height:20px;margin:0;padding:0;flex-shrink:0;accent-color:var(--accent);}
 .sym-hint{font-size:12px;color:var(--text3);margin-top:12px;}
 .sym-grid.wide{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));}
 .sym-opt{min-height:44px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Outfit',sans-serif;font-size:16px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px;}
@@ -1988,6 +1991,7 @@ async function loadSongDocs(song,body){
   if(missing.length){song.docs=song.docs.filter(d=>!missing.includes(d));ensureSongDocs(song);saveMeta();render();}
   if(!container.children.length){showUploadZone(body,missing.length?'PDF não encontrado. Anexe novamente.':undefined);return;}
   body.innerHTML='';body.appendChild(container);
+  Object.keys(pageStaff).forEach(pi=>redrawPage(+pi)); // folha pautada: nomes das notas e linhas suplementares
 }
 
 async function loadAnnots(docId){
@@ -2043,6 +2047,8 @@ function replayAll(ctx,strokes,cw,ch){
     for(let i=1;i<s.pts.length;i++)ctx.lineTo(s.pts[i][0]*cw,s.pts[i][1]*ch);
     ctx.stroke();ctx.restore();
   }
+  drawLedgerLines(ctx,strokes,cw,ch);
+  drawNoteNames(ctx,strokes,cw,ch);
   drawSelection(ctx,strokes,cw,ch);
 }
 
@@ -2416,7 +2422,8 @@ function musicGlyphSvg(k,h){
 function openMusicPicker(canvas,pi,nx,ny){
   dismissTextPopup();dismissTio();
   pendingSymbolPos={canvas,pi,nx,ny};
-  const body='<div class="sym-picker">'+MUSIC_GROUPS.map(g=>
+  const body='<label class="sym-toggle"><input type="checkbox" '+(noteNamesOn()?'checked ':'')+'onchange="setNoteNames(this.checked)"><span><strong>Identificar notas</strong></span></label>'
+    +'<div class="sym-picker">'+MUSIC_GROUPS.map(g=>
     '<div class="sym-group-title">'+g.title+'</div><div class="sym-grid music">'+
     g.items.map(k=>'<button type="button" class="sym-opt" title="'+MUSIC_GLYPHS[k].label+'" onclick="insertMusic(\''+k+'\')">'+musicGlyphSvg(k,34)+'<span>'+MUSIC_GLYPHS[k].label+'</span></button>').join('')+
     '</div>').join('')+'</div>'+(pageStaff[pi]?'<p class="sym-hint">Na folha pautada as figuras encaixam nas linhas e espaços ao inserir e ao arrastar.</p>':'');
@@ -2429,6 +2436,71 @@ function insertMusic(k){
   annotPages[p.pi].redoStack=[];
   annotPages[p.pi].strokes.push({tool:'symbol',kind:'music',value:k,color:SYMBOL_DEFAULT_COLOR,size:SYMBOL_DEFAULT_SIZE,nx:p.nx,ny});
   replayAll(p.canvas.getContext('2d'),annotPages[p.pi].strokes,p.canvas.width,p.canvas.height);saveAnnots();
+}
+
+/* ── IDENTIFICADOR DE NOTAS ──
+   Na folha pautada, cada nota ganha uma etiqueta com o nome (Dó…Si), calculado pela clave
+   da pauta (a clave mais próxima à esquerda; sem clave = Sol), pela linha/espaço da cabeça
+   e por um sustenido/bemol colocado logo antes, na mesma altura. */
+const NOTE_FIGURES={semibreve:[0],minima:[0],seminima:[0],colcheia:[0],semicolcheia:[0],colcheias2:[0,2.2]}; // cabeças (x em espaços)
+const NOTE_NAMES=['Dó','Ré','Mi','Fá','Sol','Lá','Si'];
+const CLEF_TOP_LINE={clave_sol:3,clave_fa:5}; // nota da linha de cima: Fá (Sol) / Lá (Fá)
+function noteNamesOn(){return !!loadSettings().noteNames;}
+function setNoteNames(on){const st=loadSettings();st.noteNames=!!on;saveSettings(st);Object.keys(annotPages).forEach(pi=>redrawPage(+pi));}
+function staffOf(ny){ // índice da pauta e posição em meios-espaços a partir da linha de cima
+  const half=STAFF.sp/2/STAFF.h;let best=null;
+  for(let i=0;i<STAFF.count;i++){
+    const top=(STAFF.top+i*STAFF.pitch)/STAFF.h,d=Math.abs(ny-(top+4*half));
+    if(best===null||d<best.d)best={i,top,d};
+  }
+  return{i:best.i,top:best.top,k:Math.round((ny-best.top)/half)};
+}
+function pageOfStrokes(strokes){for(const k in annotPages)if(annotPages[k].strokes===strokes)return +k;return null;}
+/* linhas suplementares automáticas para notas acima/abaixo da pauta (folha pautada) */
+function drawLedgerLines(ctx,strokes,cw,ch){
+  const pi=pageOfStrokes(strokes);if(pi===null||!pageStaff[pi])return;
+  strokes.forEach(n=>{
+    if(n.tool!=='symbol'||n.kind!=='music'||!NOTE_FIGURES[n.value])return;
+    const st=staffOf(n.ny);if(st.k>=-1&&st.k<=9)return;
+    const u=musicUnit(n,cw),hw=(n.value==='semibreve'?1.25:1.0)*u;
+    const lines=[];
+    if(st.k<0)for(let k=-2;k>=st.k;k-=2)lines.push(k);else for(let k=10;k<=st.k;k+=2)lines.push(k);
+    ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.strokeStyle=n.color||'#000000';ctx.lineWidth=Math.max(1,0.6/STAFF.w*cw);
+    NOTE_FIGURES[n.value].forEach(hx=>{
+      const x=n.nx*cw+hx*u;
+      lines.forEach(k=>{const y=(st.top+k*STAFF.sp/2/STAFF.h)*ch;ctx.beginPath();ctx.moveTo(x-hw,y);ctx.lineTo(x+hw,y);ctx.stroke();});
+    });
+    ctx.restore();
+  });
+}
+function drawNoteNames(ctx,strokes,cw,ch){
+  if(!noteNamesOn())return;
+  const pi=pageOfStrokes(strokes);if(pi===null||!pageStaff[pi])return;
+  const music=strokes.filter(o=>o.tool==='symbol'&&o.kind==='music');
+  const clefs=music.filter(o=>CLEF_TOP_LINE[o.value]!==undefined).map(o=>({o,st:staffOf(o.ny)}));
+  const accs=music.filter(o=>o.value==='sustenido'||o.value==='bemol').map(o=>({o,st:staffOf(o.ny)}));
+  const sp=STAFF.sp/STAFF.w*cw; // 1 espaço da pauta em px
+  music.forEach(n=>{
+    const heads=NOTE_FIGURES[n.value];if(!heads)return;
+    const st=staffOf(n.ny),u=musicUnit(n,cw);
+    let clef=null;clefs.forEach(c=>{if(c.st.i===st.i&&c.o.nx<n.nx&&(!clef||c.o.nx>clef.o.nx))clef=c;});
+    const topNote=CLEF_TOP_LINE[clef?clef.o.value:'clave_sol'];
+    const idx=(((topNote-st.k)%7)+7)%7;
+    let acc='';accs.forEach(a=>{const dx=(n.nx-a.o.nx)*cw/sp;if(a.st.i===st.i&&a.st.k===st.k&&dx>0&&dx<3.5)acc=a.o.value==='sustenido'?'♯':'♭';});
+    const label=NOTE_NAMES[idx]+acc;
+    // etiqueta abaixo da pauta (ou abaixo da nota, se ela estiver em linhas suplementares de baixo)
+    const staffBottom=(STAFF.top+st.i*STAFF.pitch+4*STAFF.sp)/STAFF.h*ch;
+    const y=Math.max(staffBottom+2.3*sp,n.ny*ch+2*sp);
+    ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+    ctx.font='700 '+(1.15*sp)+'px Outfit, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    heads.forEach(hx=>{
+      const x=n.nx*cw+hx*u,w=ctx.measureText(label).width+0.9*sp,h=1.55*sp,r=h/2;
+      ctx.fillStyle='#000000';
+      ctx.beginPath();ctx.moveTo(x-w/2+r,y-h/2);ctx.arcTo(x+w/2,y-h/2,x+w/2,y+h/2,r);ctx.arcTo(x+w/2,y+h/2,x-w/2,y+h/2,r);ctx.arcTo(x-w/2,y+h/2,x-w/2,y-h/2,r);ctx.arcTo(x-w/2,y-h/2,x+w/2,y-h/2,r);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#ffffff';ctx.fillText(label,x,y+0.05*sp);
+    });
+    ctx.restore();
+  });
 }
 
 /* ── EDITAR SÍMBOLO (cor, tamanho, excluir) ── */
