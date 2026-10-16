@@ -198,7 +198,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 /* ANNOT TOOLBAR */
 .annot-bar{display:flex;align-items:center;gap:5px;padding:7px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .annot-bar::-webkit-scrollbar{display:none;}
-.audio-player-bar{display:none;align-items:center;gap:7px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.audio-player-bar{display:none;flex-direction:column;align-items:stretch;gap:7px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.ap-row{display:flex;align-items:center;gap:7px;}
+.ap-row.ap-main{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.ap-row.ap-main::-webkit-scrollbar{display:none;}
+.ap-row.ap-main .audio-seek-wrap{flex:1;}
 .audio-player-bar::-webkit-scrollbar{display:none;}
 .audio-player-bar.open{display:flex;}
 .src-seg{display:flex;border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0;}
@@ -232,6 +236,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 .tool-btn.danger:active{background:rgba(248,113,113,.2);color:var(--red);}
 .swatch{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;transition:transform .15s,border-color .15s;}
 .swatch.on{border-color:#fff;transform:scale(1.2);}
+.color-combo{display:flex;align-items:center;gap:7px;height:36px;padding:0 10px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text2);font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;flex-shrink:0;}
+.color-combo-dot{width:18px;height:18px;border-radius:50%;box-shadow:0 0 0 1.5px rgba(255,255,255,.35);flex-shrink:0;}
+.color-combo-name{min-width:52px;text-align:left;}
+.color-menu{position:fixed;z-index:58;display:none;flex-direction:column;width:170px;padding:5px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);box-shadow:0 8px 28px rgba(0,0,0,.55);}
+.color-menu.open{display:flex;}
+.color-opt-row{display:flex;align-items:center;gap:10px;padding:8px 9px;background:none;border:none;border-radius:6px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;cursor:pointer;text-align:left;}
+.color-opt-row:hover{background:var(--surface2);}
+.color-opt-row.on{background:var(--surface3);}
+.color-opt-row .swatch{width:20px;height:20px;box-shadow:0 0 0 1px rgba(255,255,255,.3);}
+.color-opt-row.on .swatch{transform:none;}
 .sz-slider{width:64px;flex-shrink:0;accent-color:var(--accent);}
 .sz-lbl{font-size:11px;color:var(--text3);min-width:18px;text-align:center;}
 .font-grp{display:none;align-items:center;gap:4px;}
@@ -510,6 +524,7 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     </div>
   </div>
   <div class="audio-player-bar" id="audioPlayerBar">
+    <div class="ap-row">
     <div class="src-seg" title="O que tocar">
       <button type="button" class="src-btn" id="srcRefBtn" onclick="setPlayerSource('ref')">Referência</button>
       <button type="button" class="src-btn" id="srcBandBtn" onclick="setPlayerSource('band')">Banda</button>
@@ -521,7 +536,8 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     <button class="tool-btn" id="recDelBtn" onclick="confirmDeleteRecording()" title="Excluir a gravação da banda" style="display:none;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
     </button>
-    <div class="sep"></div>
+    </div>
+    <div class="ap-row ap-main">
     <button class="tool-btn" onclick="skipAudio(-10)" title="Voltar 10s">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
     </button>
@@ -554,6 +570,7 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     <button class="tool-btn" id="loopClearBtn" onclick="clearLoop()" title="Limpar loop" style="display:none;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
+    </div>
   </div>
   <div class="annot-bar" id="annotBar">
     <button class="tool-btn on" id="tPen" onclick="setTool('pen')" title="Caneta">
@@ -575,7 +592,10 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
     </button>
     <div class="sep"></div>
-    <div id="swatches" style="display:flex;gap:4px;align-items:center;"></div>
+    <button type="button" class="color-combo" id="colorCombo" onclick="toggleColorMenu(event)" title="Cor">
+      <span class="color-combo-dot" id="colorComboDot"></span><span class="color-combo-name" id="colorComboName"></span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
     <div class="sep"></div>
     <div id="sizeGrp" style="display:flex;align-items:center;gap:3px;">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="color:var(--text3);flex-shrink:0;"><circle cx="12" cy="12" r="5"/></svg>
@@ -650,7 +670,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.5', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.6', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -774,21 +794,41 @@ function closeSettings(){document.getElementById('settingsPanel').classList.remo
 function initSettings(){document.getElementById('appVersion').textContent='Songbook · versão '+APP_VERSION+' · '+APP_VERSION_DATE;const s=loadSettings();applyTheme(s.theme||'dark');if(s.tagFont){document.getElementById('tagFontSlider').value=s.tagFont;applyTagFont(s.tagFont);}if(s.songFont){document.getElementById('songFontSlider').value=s.songFont;applySongFont(s.songFont);}}
 
 /* ── SWATCHES ── */
+const PEN_COLOR_NAMES=['Vermelho','Amarelo','Verde','Azul','Lilás','Rosa','Branco','Preto'];
+/* lista de cores fica no <body>: dentro da barra (que rola para os lados) ela seria cortada */
 function buildSwatches(){
-  const w=document.getElementById('swatches');
+  const menu=document.createElement('div');menu.className='color-menu';menu.id='colorMenu';
   PEN_COLORS.forEach((c,i)=>{
-    const el=document.createElement('div');
-    el.className='swatch'+(i===0?' on':'');
-    el.style.background=c;
-    el.dataset.c=c;
-    el.onclick=()=>{document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('on'));el.classList.add('on');penColor=c;};
-    w.appendChild(el);
+    const el=document.createElement('button');el.type='button';
+    el.className='color-opt-row'+(i===0?' on':'');el.dataset.c=c;
+    el.innerHTML='<span class="swatch" style="background:'+c+'"></span><span>'+PEN_COLOR_NAMES[i]+'</span>';
+    el.onclick=()=>{menu.querySelectorAll('.color-opt-row').forEach(x=>x.classList.remove('on'));el.classList.add('on');penColor=c;updateColorCombo();closeColorMenu();};
+    menu.appendChild(el);
   });
+  document.body.appendChild(menu);
+  updateColorCombo();
 }
+function updateColorCombo(){
+  const i=PEN_COLORS.indexOf(penColor);
+  document.getElementById('colorComboDot').style.background=penColor;
+  document.getElementById('colorComboName').textContent=PEN_COLOR_NAMES[i]||'';
+}
+function toggleColorMenu(e){
+  if(e)e.stopPropagation();
+  const menu=document.getElementById('colorMenu');
+  if(menu.classList.contains('open')){closeColorMenu();return;}
+  const r=document.getElementById('colorCombo').getBoundingClientRect();
+  menu.style.top=(r.bottom+6)+'px';
+  menu.style.left=Math.max(8,Math.min(window.innerWidth-178,r.left))+'px';
+  menu.classList.add('open');
+  setTimeout(()=>document.addEventListener('pointerdown',_outsideColorMenu,{capture:true}),0);
+}
+function _outsideColorMenu(e){const m=document.getElementById('colorMenu'),c=document.getElementById('colorCombo');if(m.contains(e.target)||c.contains(e.target))return;closeColorMenu();}
+function closeColorMenu(){const m=document.getElementById('colorMenu');if(m)m.classList.remove('open');document.removeEventListener('pointerdown',_outsideColorMenu,{capture:true});}
 
 /* ── TOOL ── */
 function setTool(t){
-  tool=t;
+  tool=t;closeColorMenu();
   ['Pen','Symbol','Music','Text','Move','Eraser'].forEach(n=>{const el=document.getElementById('t'+n);if(el)el.classList.toggle('on',n.toLowerCase()===t);});
   const ep=document.getElementById('tEditPdf');if(ep)ep.classList.toggle('on',t==='editpdf');
   document.getElementById('fontGrp').classList.toggle('visible',t==='text'||t==='move');
@@ -819,7 +859,7 @@ function toggleReadMode(){
   });
   if(readMode){icon.innerHTML='<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';fab.title='Modo edição';}
   else{icon.innerHTML='<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';fab.title='Modo leitura';}
-  if(readMode)dismissTio();
+  if(readMode){dismissTio();closeColorMenu();}
 }
 
 /* ── ZOOM ── */
