@@ -393,9 +393,6 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
   <button class="btn-icon" onclick="toggleSearchBar()" title="Buscar música">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
   </button>
-  <button class="btn-icon" onclick="openResetConfirm()" title="Limpar dados" style="color:#f87171;">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
-  </button>
   <button class="btn-icon" onclick="openSettings()" title="Configurações">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
   </button>
@@ -469,6 +466,11 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
         <label class="btn-outline" style="cursor:pointer;">Restaurar<input type="file" multiple onchange="importBackup(event)" style="display:none;"></label>
       </div>
       <div class="backup-status" id="backupStatus"></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Dados</div>
+      <p class="backup-hint">Corrigir marcações de PDF ou apagar tudo do app. Faça um backup antes de apagar.</p>
+      <button class="btn-danger" style="width:100%;" onclick="openResetConfirm()">Limpar dados…</button>
     </div>
     <div class="settings-version" id="appVersion"></div>
   </div>
@@ -626,7 +628,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.3', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.4', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -1163,11 +1165,12 @@ function buildTagCard(tag,path,parentPath,searchQ){
   card.dataset.path=path;
   const subCount=tag.children.length;
   const subLabel=subCount?subCount+' subtag'+(subCount!==1?'s':'')+' · ':'';
+  const songTotal=collectAllSongs(tag).length; // inclui as músicas de todas as subtags
   card.innerHTML=`
     <div class="tag-header" onclick="toggleTag('${path}')">
       <div class="tag-drag-handle" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="9" cy="19" r="1.2"/><circle cx="15" cy="5" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="15" cy="19" r="1.2"/></svg></div>
       <div class="tag-dot" style="background:${tag.color}"></div>
-      <div class="tag-name-wrap"><div class="tag-name">${esc(tag.name)}</div><div class="tag-sub">${subLabel}${tag.songs.length} música${tag.songs.length!==1?'s':''}</div></div>
+      <div class="tag-name-wrap"><div class="tag-name">${esc(tag.name)}</div><div class="tag-sub">${subLabel}${songTotal} música${songTotal!==1?'s':''}</div></div>
       <div class="tag-actions" onclick="event.stopPropagation()">
         <button class="btn-icon" onclick="openAddTag('${path}')" title="Nova subtag"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg></button>
         <button class="btn-icon" onclick="openEditTag('${path}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -2211,7 +2214,7 @@ function clearAnnotations(){
 }
 
 /* ── SÍMBOLOS (notas, instrumentos, repetições, partes) ── */
-const SYMBOL_DEFAULT_SIZE=80, SYMBOL_DEFAULT_COLOR='#000000', SYMBOL_MIN_SIZE=20, SYMBOL_MAX_SIZE=300;
+const SYMBOL_DEFAULT_SIZE=80, SYMBOL_INSERT_SIZE=60, SYMBOL_DEFAULT_COLOR='#000000', SYMBOL_MIN_SIZE=20, SYMBOL_MAX_SIZE=300;
 const SYMBOL_ICONS={
   violao:{label:'Violão',d:'M14.86 14.52A3.5 3.5 0 1 0 9.14 14.52A4.5 4.5 0 1 0 14.86 14.52ZM13.4 16A1.4 1.4 0 1 0 10.6 16A1.4 1.4 0 1 0 13.4 16ZM10.6 19.3H13.4V20.1H10.6ZM11.2 2.6H12.8V9H11.2ZM10.5 0.6H13.5V2.6H10.5Z'},
   acordeom:{label:'Acordeom',d:'M2 5H7V19H2ZM5.4 8A0.9 0.9 0 1 0 3.6 8A0.9 0.9 0 1 0 5.4 8ZM5.4 12A0.9 0.9 0 1 0 3.6 12A0.9 0.9 0 1 0 5.4 12ZM5.4 16A0.9 0.9 0 1 0 3.6 16A0.9 0.9 0 1 0 5.4 16ZM7 6L9 5L11 6L13 5L15 6L17 5V19L15 18L13 19L11 18L9 19L7 18ZM8.75 7.5H9.25V16.5H8.75ZM10.75 7.5H11.25V16.5H10.75ZM12.75 7.5H13.25V16.5H12.75ZM14.75 7.5H15.25V16.5H14.75ZM17 5H22V19H17ZM18.3 7H20.7V8H18.3ZM18.3 10H20.7V11H18.3ZM18.3 13H20.7V14H18.3ZM18.3 16H20.7V17H18.3Z'},
@@ -2357,7 +2360,7 @@ function insertSymbol(gi,ii){
   const g=SYMBOL_GROUPS[gi];
   if(!annotPages[p.pi])annotPages[p.pi]={strokes:[],redoStack:[]};
   annotPages[p.pi].redoStack=[];
-  annotPages[p.pi].strokes.push({tool:'symbol',kind:g.kind,value:g.items[ii],color:SYMBOL_DEFAULT_COLOR,size:SYMBOL_DEFAULT_SIZE,nx:p.nx,ny:p.ny});
+  annotPages[p.pi].strokes.push({tool:'symbol',kind:g.kind,value:g.items[ii],color:SYMBOL_DEFAULT_COLOR,size:SYMBOL_INSERT_SIZE,nx:p.nx,ny:p.ny});
   replayAll(p.canvas.getContext('2d'),annotPages[p.pi].strokes,p.canvas.width,p.canvas.height);saveAnnots();
 }
 
