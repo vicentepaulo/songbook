@@ -198,11 +198,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 /* ANNOT TOOLBAR */
 .annot-bar{display:flex;align-items:center;gap:5px;padding:7px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .annot-bar::-webkit-scrollbar{display:none;}
-.audio-player-bar{display:none;flex-direction:column;align-items:stretch;gap:7px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;}
-.ap-row{display:flex;align-items:center;gap:7px;}
-.ap-row.ap-main{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-.ap-row.ap-main::-webkit-scrollbar{display:none;}
-.ap-row.ap-main .audio-seek-wrap{flex:1;}
+.audio-player-bar{display:none;align-items:center;gap:7px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.audio-player-bar .audio-seek-wrap{flex:1;}
+.audio-tools-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.audio-tools-menu{position:fixed;z-index:58;display:none;flex-direction:column;gap:8px;width:280px;max-width:calc(100vw - 16px);padding:12px 14px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);box-shadow:0 8px 28px rgba(0,0,0,.55);}
+.audio-tools-menu.open{display:flex;}
+.atm-title{font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;}
+.atm-title+.atm-row{margin-bottom:6px;}
+.atm-hint{font-size:12px;color:var(--text2);line-height:1.35;margin-top:-2px;}
+.atm-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.atm-row .speed-select{flex:1;}
 .audio-player-bar::-webkit-scrollbar{display:none;}
 .audio-player-bar.open{display:flex;}
 .src-seg{display:flex;border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0;}
@@ -221,7 +226,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 .audio-player-bar .play-pause-btn.playing{background:var(--accent);color:#fff;border-color:var(--accent);}
 .audio-seek-wrap{display:flex;align-items:center;gap:6px;flex-shrink:0;min-width:160px;}
 .audio-time{font-size:11px;color:var(--text2);flex-shrink:0;width:30px;text-align:center;}
-.audio-seek{width:110px;flex-shrink:0;accent-color:var(--accent);}
+.audio-seek{flex:1;width:auto;min-width:90px;accent-color:var(--accent);}
 .speed-select{background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:7px 9px;font-size:13px;font-family:'Outfit',sans-serif;cursor:pointer;flex-shrink:0;}
 .loop-mark-btn{font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;}
 .loop-toggle-btn.on{background:var(--accent);color:#fff;border-color:var(--accent);}
@@ -524,7 +529,6 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     </div>
   </div>
   <div class="audio-player-bar" id="audioPlayerBar">
-    <div class="ap-row">
     <div class="src-seg" title="O que tocar">
       <button type="button" class="src-btn" id="srcRefBtn" onclick="setPlayerSource('ref')">Referência</button>
       <button type="button" class="src-btn" id="srcBandBtn" onclick="setPlayerSource('band')">Banda</button>
@@ -536,8 +540,7 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     <button class="tool-btn" id="recDelBtn" onclick="confirmDeleteRecording()" title="Excluir a gravação da banda" style="display:none;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
     </button>
-    </div>
-    <div class="ap-row ap-main">
+    <div class="sep"></div>
     <button class="tool-btn" onclick="skipAudio(-10)" title="Voltar 10s">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
     </button>
@@ -554,23 +557,9 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
       <span class="audio-time" id="audioTimeDur">0:00</span>
     </div>
     <div class="sep"></div>
-    <select class="speed-select" id="speedSelect" onchange="setAudioRate(parseFloat(this.value))" title="Velocidade">
-      <option value="1">1x</option>
-      <option value="0.85">0.85x</option>
-      <option value="0.7">0.7x</option>
-      <option value="0.5">0.5x</option>
-    </select>
-    <div class="sep"></div>
-    <button class="tool-btn loop-mark-btn" onclick="setLoopStart()" title="Marcar início do loop">A</button>
-    <button class="tool-btn loop-mark-btn" onclick="setLoopEnd()" title="Marcar fim do loop">B</button>
-    <span class="loop-label" id="loopLabel"></span>
-    <button class="tool-btn loop-toggle-btn" id="loopToggleBtn" onclick="toggleLoopEnabled()" title="Repetir trecho A-B" disabled>
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+    <button class="tool-btn audio-tools-btn" id="audioToolsBtn" onclick="toggleAudioTools(event)" title="Velocidade e repetir trecho">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
     </button>
-    <button class="tool-btn" id="loopClearBtn" onclick="clearLoop()" title="Limpar loop" style="display:none;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    </div>
   </div>
   <div class="annot-bar" id="annotBar">
     <button class="tool-btn on" id="tPen" onclick="setTool('pen')" title="Caneta">
@@ -626,6 +615,32 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
   <div class="pdf-body" id="pdfBody"></div>
 </div>
 
+<!-- VELOCIDADE / REPETIR TRECHO (abre pelo ícone do player) -->
+<div class="audio-tools-menu" id="audioToolsMenu">
+  <div class="atm-title">Velocidade</div>
+  <div class="atm-row">
+    <select class="speed-select" id="speedSelect" onchange="setAudioRate(parseFloat(this.value))" title="Velocidade">
+      <option value="1">1x</option>
+      <option value="0.85">0.85x</option>
+      <option value="0.7">0.7x</option>
+      <option value="0.5">0.5x</option>
+    </select>
+  </div>
+  <div class="atm-title">Repetir trecho</div>
+  <div class="atm-hint">Toque em <strong>A</strong> no início e em <strong>B</strong> no fim do trecho, depois ative a repetição.</div>
+  <div class="atm-row">
+    <button class="tool-btn loop-mark-btn" onclick="setLoopStart()" title="Marcar início do loop">A</button>
+    <button class="tool-btn loop-mark-btn" onclick="setLoopEnd()" title="Marcar fim do loop">B</button>
+    <span class="loop-label" id="loopLabel"></span>
+    <button class="tool-btn loop-toggle-btn" id="loopToggleBtn" onclick="toggleLoopEnabled()" title="Repetir trecho A-B" disabled>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+    </button>
+    <button class="tool-btn" id="loopClearBtn" onclick="clearLoop()" title="Limpar loop" style="display:none;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</div>
+
 <!-- FLOATING CONTROLS -->
 <div class="pdf-controls" id="pdfControls">
   <div class="zoom-cluster">
@@ -670,7 +685,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.6', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.7', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -1708,7 +1723,7 @@ function toggleAudioPlayerBar(){
   const song=getTagByPath(currentSong.path).songs[currentSong.si];
   if(!song)return;
   const bar=document.getElementById('audioPlayerBar');
-  if(bar.classList.contains('open')){bar.classList.remove('open');return;}
+  if(bar.classList.contains('open')){bar.classList.remove('open');closeAudioTools();return;}
   bar.classList.add('open');
   const src=pickSource(song,playerSource);
   if(activeAudioSongId!==song.id&&src)loadAndPlayAudio(song.id,src);
@@ -1735,6 +1750,7 @@ function setAudioRate(r){
   if(activeAudioEl)activeAudioEl.playbackRate=r;
   const sel=document.getElementById('speedSelect');
   if(sel)sel.value=String(r);
+  updateAudioToolsBadge();
 }
 
 /* ── loop A-B ── */
@@ -1760,6 +1776,26 @@ function clearLoop(){
   loopStart=null;loopEnd=null;loopEnabled=false;
   updateLoopUI();
 }
+function toggleAudioTools(e){
+  if(e)e.stopPropagation();
+  const m=document.getElementById('audioToolsMenu');
+  if(m.classList.contains('open')){closeAudioTools();return;}
+  const r=document.getElementById('audioToolsBtn').getBoundingClientRect();
+  m.classList.add('open');
+  const w=m.offsetWidth;
+  m.style.top=(r.bottom+6)+'px';
+  m.style.left=Math.max(8,Math.min(window.innerWidth-w-8,r.right-w))+'px';
+  setTimeout(()=>document.addEventListener('pointerdown',_outsideAudioTools,{capture:true}),0);
+}
+function _outsideAudioTools(e){const m=document.getElementById('audioToolsMenu'),b=document.getElementById('audioToolsBtn');if(m.contains(e.target)||b.contains(e.target))return;closeAudioTools();}
+function closeAudioTools(){const m=document.getElementById('audioToolsMenu');if(m)m.classList.remove('open');document.removeEventListener('pointerdown',_outsideAudioTools,{capture:true});}
+/* o ícone fica destacado quando a velocidade não é 1x ou a repetição está ligada */
+function updateAudioToolsBadge(){
+  const b=document.getElementById('audioToolsBtn');if(!b)return;
+  const on=currentAudioRate!==1||loopEnabled;
+  b.classList.toggle('active',on);
+  b.title='Velocidade e repetir trecho'+(on?' ('+(currentAudioRate!==1?currentAudioRate+'x':'')+(currentAudioRate!==1&&loopEnabled?' · ':'')+(loopEnabled?'repetindo':'')+')':'');
+}
 function updateLoopUI(){
   const canEnable=loopStart!==null&&loopEnd!==null;
   const toggleBtn=document.getElementById('loopToggleBtn');
@@ -1768,6 +1804,7 @@ function updateLoopUI(){
   if(label)label.textContent=canEnable?(fmtTime(loopStart)+' → '+fmtTime(loopEnd)):(loopStart!==null?'A '+fmtTime(loopStart)+'…':'');
   const clearBtn=document.getElementById('loopClearBtn');
   if(clearBtn)clearBtn.style.display=(loopStart!==null||loopEnd!==null)?'flex':'none';
+  updateAudioToolsBadge();
 }
 function syncAudioPlayerForSong(song){
   const headerBtn=document.getElementById('audioPlayerBtn');
@@ -2034,7 +2071,7 @@ function showUploadZone(body,warn){
 function closePdf(){
   const screen=document.getElementById('pdfScreen');
   screen.classList.remove('visible','read-mode');
-  currentPdfDoc=null;annotPages={};dismissTio();dismissWordEditor();readMode=false;stopAutoScroll();stopRecording();
+  currentPdfDoc=null;annotPages={};dismissTio();dismissWordEditor();readMode=false;stopAutoScroll();stopRecording();closeAudioTools();
 }
 
 let viewDocs=[];
