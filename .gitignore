@@ -1,0 +1,7 @@
+# Backups do Songbook têm suas músicas, PDFs e áudios: nunca enviar ao GitHub (repositório público)
+*.songbook
+*.songbook.txt
+songbook-backup-*
+# Guia local e arquivos de ferramentas
+PUBLICAR.md
+.claude/
