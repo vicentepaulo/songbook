@@ -201,6 +201,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 .audio-player-bar{display:none;align-items:center;gap:7px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .audio-player-bar::-webkit-scrollbar{display:none;}
 .audio-player-bar.open{display:flex;}
+.src-seg{display:flex;border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0;}
+.src-btn{background:var(--surface3);border:none;color:var(--text2);font-family:'Outfit',sans-serif;font-size:13px;padding:0 10px;height:34px;cursor:pointer;white-space:nowrap;}
+.src-btn+.src-btn{border-left:1px solid var(--border2);}
+.src-btn.on{background:var(--accent);color:#fff;}
+.src-btn:disabled{opacity:.4;cursor:not-allowed;}
+.rec-btn{width:auto;min-width:36px;padding:0 9px;gap:5px;color:#f87171;}
+.rec-btn.recording{background:#dc2626;color:#fff;border-color:#dc2626;animation:recPulse 1.2s ease-in-out infinite;}
+.rec-time{font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;display:none;}
+.rec-btn.recording .rec-time{display:inline;}
+@keyframes recPulse{50%{box-shadow:0 0 0 4px rgba(220,38,38,.35);}}
 .audio-player-bar .icon-pause{display:none;}
 .audio-player-bar .play-pause-btn.playing .icon-play{display:none;}
 .audio-player-bar .play-pause-btn.playing .icon-pause{display:block;}
@@ -500,6 +510,18 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     </div>
   </div>
   <div class="audio-player-bar" id="audioPlayerBar">
+    <div class="src-seg" title="O que tocar">
+      <button type="button" class="src-btn" id="srcRefBtn" onclick="setPlayerSource('ref')">Referência</button>
+      <button type="button" class="src-btn" id="srcBandBtn" onclick="setPlayerSource('band')">Banda</button>
+    </div>
+    <button class="tool-btn rec-btn" id="recBtn" onclick="toggleRecording()" title="Gravar a versão da banda">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+      <span class="rec-time" id="recTime"></span>
+    </button>
+    <button class="tool-btn" id="recDelBtn" onclick="confirmDeleteRecording()" title="Excluir a gravação da banda" style="display:none;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    </button>
+    <div class="sep"></div>
     <button class="tool-btn" onclick="skipAudio(-10)" title="Voltar 10s">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
     </button>
@@ -628,7 +650,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.4', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.5', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -700,7 +722,7 @@ function loadMeta(){
   }catch(e){return{tags:[],nextId:1};}
 }
 function serializeTag(t){
-  return{id:t.id,name:t.name,color:t.color,open:t.open,songs:t.songs.map(s=>{const o={id:s.id,name:s.name,hasPdf:Array.isArray(s.docs)?s.docs.length>0:!!s.hasPdf,hasAudio:!!s.hasAudio};if(Array.isArray(s.docs))o.docs=s.docs.map(d=>d.kind?{id:d.id,name:d.name,kind:d.kind}:{id:d.id,name:d.name});if(s.note)o.note=s.note;return o;}),children:t.children.map(serializeTag)};
+  return{id:t.id,name:t.name,color:t.color,open:t.open,songs:t.songs.map(s=>{const o={id:s.id,name:s.name,hasPdf:Array.isArray(s.docs)?s.docs.length>0:!!s.hasPdf,hasAudio:!!s.hasAudio};if(s.hasRec)o.hasRec=true;if(Array.isArray(s.docs))o.docs=s.docs.map(d=>d.kind?{id:d.id,name:d.name,kind:d.kind}:{id:d.id,name:d.name});if(s.note)o.note=s.note;return o;}),children:t.children.map(serializeTag)};
 }
 function saveMeta(){
   meta.nextId=nextId;
@@ -889,7 +911,8 @@ async function finishSongSwipe(dir){
   // Dispara já aqui, ainda dentro do gesto, para o navegador permitir o play.
   const next=songs[newSi];
   const wasPlaying=!!(activeAudioEl&&!activeAudioEl.paused);
-  const audioP=!wasPlaying?null:next.hasAudio?loadAndPlayAudio(next.id):(stopActiveAudio(),null);
+  const nextSrc=pickSource(next,activeAudioSource);
+  const audioP=!wasPlaying?null:nextSrc?loadAndPlayAudio(next.id,nextSrc):(stopActiveAudio(),null);
   body.style.transition='transform .16s ease, opacity .16s ease';
   body.style.transform='translateX('+(dir>0?'-40px':'40px')+')';
   body.style.opacity='0';
@@ -1207,7 +1230,7 @@ function buildSongs(wrap,tag,path,searchQ,selfMatch){
       <span class="drag-handle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="9" cy="19" r="1.2"/><circle cx="15" cy="5" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="15" cy="19" r="1.2"/></svg></span>
       <span class="song-title">${titleHtml}</span>
       <span class="song-badge ${song.hasPdf?'badge-pdf':'badge-nopdf'}">${song.hasPdf?((song.docs&&song.docs.length>1)?song.docs.length+' PDFs':'PDF'):'sem PDF'}</span>
-      ${song.hasAudio?'<button type="button" class="song-audio-btn'+(activeAudioSongId===song.id&&activeAudioEl&&!activeAudioEl.paused?' playing':'')+'" data-song-id="'+song.id+'" onclick="event.stopPropagation();toggleSongAudio(this,'+song.id+')" title="Reproduzir áudio"><svg class="icon-play" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg><svg class="icon-pause" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16"/><rect x="14" y="4" width="5" height="16"/></svg></button>':''}
+      ${(song.hasAudio||song.hasRec)?'<button type="button" class="song-audio-btn'+(activeAudioSongId===song.id&&activeAudioEl&&!activeAudioEl.paused?' playing':'')+'" data-song-id="'+song.id+'" onclick="event.stopPropagation();toggleSongAudio(this,'+song.id+')" title="Reproduzir áudio"><svg class="icon-play" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg><svg class="icon-pause" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16"/><rect x="14" y="4" width="5" height="16"/></svg></button>':''}
       <button type="button" class="song-note-btn${song.note?' has-note':''}" onclick="event.stopPropagation();openSongNote('${path}',${si})" title="${song.note?'Ver/editar anotação':'Adicionar anotação'}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/><polyline points="15 3 15 9 21 9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg></button>
       <div class="song-actions" onclick="event.stopPropagation()">
         <button class="btn-icon" onclick="openEditSong('${path}',${si})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -1481,6 +1504,103 @@ function saveSongNote(path,si){
 
 /* ── PLAYER DE ÁUDIO (uma música por vez, continua tocando entre telas do app) ── */
 let activeAudioEl=null,activeAudioSongId=null,currentAudioRate=1;
+let activeAudioSource='ref',playerSource='ref',activeAudioDur=0,recState=null;
+const recKey=id=>'rec:'+id; // gravação da banda: mesma store do áudio, chave própria
+function audioDur(){const d=activeAudioEl&&activeAudioEl.duration;return (d&&isFinite(d))?d:activeAudioDur;}
+function pickSource(song,prefer){
+  if(!song)return null;
+  if(prefer==='band'&&song.hasRec)return 'band';
+  if(prefer==='ref'&&song.hasAudio)return 'ref';
+  return song.hasAudio?'ref':song.hasRec?'band':null;
+}
+function playerSong(){return currentSong?getTagByPath(currentSong.path).songs[currentSong.si]:null;}
+/* troca Referência/Banda mantendo o ponto da música (bom para comparar) */
+async function setPlayerSource(src){
+  const song=playerSong();if(!song||recState)return;
+  if(src==='band'&&!song.hasRec||src==='ref'&&!song.hasAudio)return;
+  const same=activeAudioEl&&activeAudioSongId===song.id;
+  if(same&&activeAudioSource===src)return;
+  playerSource=src;
+  if(!same){updateRecUI();return;}
+  const t=activeAudioEl.currentTime||0,wasPaused=activeAudioEl.paused;
+  if(await loadAndPlayAudio(song.id,src)&&activeAudioEl){
+    try{activeAudioEl.currentTime=t;}catch(e){}
+    if(wasPaused)activeAudioEl.pause();
+  }
+}
+function updateRecUI(){
+  const song=playerSong();
+  const ref=document.getElementById('srcRefBtn'),band=document.getElementById('srcBandBtn');
+  const recBtn=document.getElementById('recBtn'),del=document.getElementById('recDelBtn'),tm=document.getElementById('recTime');
+  if(!ref)return;
+  const cur=song&&activeAudioEl&&activeAudioSongId===song.id?activeAudioSource:playerSource;
+  ref.disabled=!(song&&song.hasAudio)||!!recState;band.disabled=!(song&&song.hasRec)||!!recState;
+  ref.classList.toggle('on',cur==='ref'&&!ref.disabled);band.classList.toggle('on',cur==='band'&&!band.disabled);
+  ref.title=song&&song.hasAudio?'Tocar o áudio de referência':'Sem áudio de referência (anexe em Editar música)';
+  band.title=song&&song.hasRec?'Tocar a gravação da banda':'Ainda não há gravação da banda';
+  recBtn.classList.toggle('recording',!!recState);
+  recBtn.title=recState?'Parar e salvar a gravação':(song&&song.hasRec?'Gravar de novo (substitui a gravação atual)':'Gravar a versão da banda');
+  tm.textContent=recState?fmtTime((Date.now()-recState.t0)/1000):'';
+  del.style.display=song&&song.hasRec&&!recState?'flex':'none';
+}
+
+/* ── GRAVADOR (uma gravação da banda por música; gravar de novo substitui) ── */
+function toggleRecording(){
+  if(recState){stopRecording();return;}
+  const song=playerSong();if(!song)return;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||typeof MediaRecorder==='undefined'){
+    alert('Este navegador não permite gravar aqui. Abra o Songbook pelo endereço https://vicentepaulo.github.io/songbook/ e permita o microfone.');return;
+  }
+  if(song.hasRec){
+    showModal('Substituir gravação','<p class="confirm-msg">"<strong>'+esc(song.name)+'</strong>" já tem uma gravação da banda. Gravar de novo vai <strong>substituir</strong> a atual. Continuar?</p>',[
+      {label:'Cancelar',cls:'btn-cancel',action:closeModal},
+      {label:'Gravar',cls:'btn-danger',action:()=>{closeModal();startRecording(song);}}
+    ]);return;
+  }
+  startRecording(song);
+}
+async function startRecording(song){
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});}
+  catch(e){alert('Não foi possível usar o microfone ('+(e&&e.name||'erro')+'). Verifique se o navegador tem permissão de microfone para este site.');return;}
+  if(activeAudioSongId===song.id&&activeAudioSource==='band')stopActiveAudio(); // a gravação antiga vai ser substituída
+  const type=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||'';
+  let rec;
+  try{rec=new MediaRecorder(stream,type?{mimeType:type}:undefined);}catch(e){stream.getTracks().forEach(t=>t.stop());alert('Não foi possível iniciar a gravação.');return;}
+  const chunks=[];
+  rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+  rec.onstop=async()=>{
+    const st=recState;recState=null;
+    stream.getTracks().forEach(t=>t.stop());
+    if(st)clearInterval(st.timer);
+    const duration=st?(Date.now()-st.t0)/1000:0;
+    const blob=new Blob(chunks,{type:rec.mimeType||type||'audio/webm'});
+    if(!blob.size){updateRecUI();alert('A gravação ficou vazia.');return;}
+    try{
+      await idbSet('audio',recKey(song.id),{data:await blob.arrayBuffer(),type:blob.type,duration});
+      song.hasRec=true;saveMeta();render();
+      playerSource='band';
+    }catch(e){alert('Erro ao salvar a gravação: '+(e&&e.message?e.message:e));}
+    updateRecUI();
+  };
+  rec.start(1000);
+  recState={rec,stream,songId:song.id,t0:Date.now(),timer:setInterval(updateRecUI,500)};
+  updateRecUI();
+}
+function stopRecording(){if(recState&&recState.rec.state!=='inactive')recState.rec.stop();}
+function confirmDeleteRecording(){
+  const song=playerSong();if(!song||!song.hasRec)return;
+  showModal('Excluir gravação','<p class="confirm-msg">Excluir a gravação da banda de "<strong>'+esc(song.name)+'</strong>"? O áudio de referência continua.</p>',[
+    {label:'Cancelar',cls:'btn-cancel',action:closeModal},
+    {label:'Excluir',cls:'btn-danger',action:async()=>{
+      closeModal();
+      if(activeAudioSongId===song.id&&activeAudioSource==='band')stopActiveAudio();
+      try{await idbDel('audio',recKey(song.id));}catch(e){}
+      song.hasRec=false;saveMeta();render();
+      playerSource='ref';updateRecUI();
+    }}
+  ]);
+}
 let loopStart=null,loopEnd=null,loopEnabled=false;
 
 function stopActiveAudio(){
@@ -1488,12 +1608,14 @@ function stopActiveAudio(){
   activeAudioEl=null;activeAudioSongId=null;
   updateAllAudioUI();
 }
-async function loadAndPlayAudio(songId){
+async function loadAndPlayAudio(songId,source){
+  source=source==='band'?'band':'ref';
   stopActiveAudio();
   clearLoop();
   try{
-    const rec=await idbGet('audio',songId);
-    if(!rec){alert('Áudio não encontrado. Anexe novamente em "Editar música".');return false;}
+    const rec=await idbGet('audio',source==='band'?recKey(songId):songId);
+    if(!rec){alert(source==='band'?'Gravação da banda não encontrada.':'Áudio não encontrado. Anexe novamente em "Editar música".');return false;}
+    activeAudioDur=rec.duration||0;
     const blob=rec instanceof Blob?rec:new Blob([rec.data],{type:rec.type||'audio/mpeg'});
     const url=URL.createObjectURL(blob);
     const audio=new Audio(url);
@@ -1505,15 +1627,16 @@ async function loadAndPlayAudio(songId){
     audio.addEventListener('ended',()=>stopActiveAudio());
     audio.addEventListener('error',()=>stopActiveAudio());
     await audio.play();
-    activeAudioEl=audio;activeAudioSongId=songId;
-    updateAllAudioUI();
+    activeAudioEl=audio;activeAudioSongId=songId;activeAudioSource=source;playerSource=source;
+    updateAllAudioUI();updateRecUI();
     return true;
   }catch(err){alert('Não foi possível reproduzir o áudio.');return false;}
 }
 async function toggleSongAudio(btn,songId){
   if(activeAudioSongId===songId){stopActiveAudio();return;}
   btn.classList.add('loading');
-  await loadAndPlayAudio(songId);
+  let sg=null;walkTags(meta.tags,t=>t.songs.forEach(x=>{if(x.id===songId)sg=x;}));
+  await loadAndPlayAudio(songId,pickSource(sg,'ref')||'ref');
   btn.classList.remove('loading');
 }
 function updateAllAudioUI(){
@@ -1531,7 +1654,7 @@ function updateAllAudioUI(){
   if(ppBtn)ppBtn.classList.toggle('playing',!!(activeAudioEl&&!activeAudioEl.paused));
   const curEl=document.getElementById('audioTimeCur'),durEl=document.getElementById('audioTimeDur'),seek=document.getElementById('audioSeek');
   if(activeAudioEl){
-    const cur=activeAudioEl.currentTime||0,dur=activeAudioEl.duration||0;
+    const cur=activeAudioEl.currentTime||0,dur=audioDur();
     if(curEl)curEl.textContent=fmtTime(cur);
     if(durEl)durEl.textContent=fmtTime(dur);
     if(seek&&dur)seek.value=String((cur/dur)*100);
@@ -1543,27 +1666,29 @@ function fmtTime(s){s=Math.floor(s||0);const m=Math.floor(s/60),ss=s%60;return m
 function toggleAudioPlayerBar(){
   if(!currentSong)return;
   const song=getTagByPath(currentSong.path).songs[currentSong.si];
-  if(!song||!song.hasAudio)return;
+  if(!song)return;
   const bar=document.getElementById('audioPlayerBar');
   if(bar.classList.contains('open')){bar.classList.remove('open');return;}
   bar.classList.add('open');
-  if(activeAudioSongId!==song.id)loadAndPlayAudio(song.id);
+  const src=pickSource(song,playerSource);
+  if(activeAudioSongId!==song.id&&src)loadAndPlayAudio(song.id,src);
   else updateAllAudioUI();
+  updateRecUI();
 }
 function toggleAudioPlayPause(){
   if(!currentSong)return;
   const song=getTagByPath(currentSong.path).songs[currentSong.si];
-  if(!activeAudioEl){if(song&&song.hasAudio)loadAndPlayAudio(song.id);return;}
+  if(!activeAudioEl){const src=song&&pickSource(song,playerSource);if(src)loadAndPlayAudio(song.id,src);return;}
   if(activeAudioEl.paused)activeAudioEl.play();else activeAudioEl.pause();
 }
 function skipAudio(sec){
   if(!activeAudioEl)return;
-  activeAudioEl.currentTime=Math.max(0,Math.min(activeAudioEl.duration||1e9,activeAudioEl.currentTime+sec));
+  activeAudioEl.currentTime=Math.max(0,Math.min(audioDur()||1e9,activeAudioEl.currentTime+sec));
   updateAllAudioUI();
 }
 function seekAudio(val){
-  if(!activeAudioEl||!activeAudioEl.duration)return;
-  activeAudioEl.currentTime=(val/100)*activeAudioEl.duration;
+  if(!activeAudioEl||!audioDur())return;
+  activeAudioEl.currentTime=(val/100)*audioDur();
 }
 function setAudioRate(r){
   currentAudioRate=r;
@@ -1607,14 +1732,13 @@ function updateLoopUI(){
 function syncAudioPlayerForSong(song){
   const headerBtn=document.getElementById('audioPlayerBtn');
   const bar=document.getElementById('audioPlayerBar');
-  if(!song||!song.hasAudio){
-    headerBtn.style.display='none';
-    bar.classList.remove('open');
-    return;
-  }
+  if(!song){headerBtn.style.display='none';bar.classList.remove('open');return;}
   headerBtn.style.display='flex';
+  headerBtn.classList.toggle('has-audio',!!(song.hasAudio||song.hasRec));
+  playerSource=pickSource(song,activeAudioSongId===song.id?activeAudioSource:playerSource)||'ref';
   if(activeAudioSongId===song.id){bar.classList.add('open');updateAllAudioUI();}
   else bar.classList.remove('open');
+  updateRecUI();
 }
 
 /* ── BACKUP / RESTAURAR ── */
@@ -1645,6 +1769,8 @@ async function exportBackup(){
       }
       const au=await idbGet('audio',s.id);
       if(au){add('audio',s.id,toBlobPart(au.data||au),{type:(au&&au.type)||'audio/mpeg'});na++;}
+      const rc=await idbGet('audio',recKey(s.id));
+      if(rc){add('audio',recKey(s.id),toBlobPart(rc.data||rc),{type:rc.type||'audio/webm',duration:rc.duration||0});na++;}
       if(++n%5===0)setBackupStatus('Gerando backup… '+n+'/'+all.length);
     }
     const header={app:'songbook',version:3,exportedAt:new Date().toISOString(),meta:{nextId:nextId,tags:meta.tags.map(serializeTag)},settings:loadSettings(),entries};
@@ -1797,7 +1923,7 @@ async function restoreBackup(data){
         const sl=data.file.slice(data.dataStart+e.off,data.dataStart+e.off+e.len);
         if(e.store==='pdfs')pdfs.push([e.id,await sl.arrayBuffer()]);
         else if(e.store==='annots')annots.push([e.id,await sl.text()]);
-        else if(e.store==='audio')audios.push([e.id,{data:await sl.arrayBuffer(),type:e.type||'audio/mpeg'}]);
+        else if(e.store==='audio'){const r={data:await sl.arrayBuffer(),type:e.type||'audio/mpeg'};if(e.duration)r.duration=e.duration;audios.push([e.id,r]);}
         if(++i%10===0)setBackupStatus('Restaurando… '+i+'/'+ents.length);
       }
     }else{
@@ -1841,6 +1967,7 @@ function openResetConfirm(){
 
 /* ── PDF OPEN/CLOSE ── */
 async function openSong(path,si){
+  stopRecording();
   currentSong={path,si};annotPages={};
   activeCanvas=null;activeCtx=null;activePi=null;
   readMode=true;zoomLevel=1;
@@ -1867,7 +1994,7 @@ function showUploadZone(body,warn){
 function closePdf(){
   const screen=document.getElementById('pdfScreen');
   screen.classList.remove('visible','read-mode');
-  currentPdfDoc=null;annotPages={};dismissTio();dismissWordEditor();readMode=false;stopAutoScroll();
+  currentPdfDoc=null;annotPages={};dismissTio();dismissWordEditor();readMode=false;stopAutoScroll();stopRecording();
 }
 
 let viewDocs=[];
@@ -1905,6 +2032,7 @@ async function deleteSongData(s){
   const ids=new Set([s.id]);(s.docs||[]).forEach(d=>ids.add(d.id));
   for(const id of ids){try{await idbDel('pdfs',id);await idbDel('annots',id);}catch(e){}}
   try{await idbDel('audio',s.id);}catch(e){}
+  try{await idbDel('audio',recKey(s.id));}catch(e){}
 }
 function viewerOpenOn(path,si){
   return document.getElementById('pdfScreen').classList.contains('visible')&&currentSong&&currentSong.path===path&&currentSong.si===si;
