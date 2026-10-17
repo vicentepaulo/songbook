@@ -693,7 +693,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.10', APP_VERSION_DATE='17/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.12', APP_VERSION_DATE='17/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -2303,6 +2303,12 @@ function onDown(canvas,pi,e){
   if(syncMode){syncTap={pi,x:e.clientX,y:e.clientY};return;}
   e.preventDefault();if(readMode)return;
   activeCanvas=canvas;activeCtx=canvas.getContext('2d');activePi=pi;
+  if(tool==='editpdf'){
+    const hit=nearestWordHit(canvas,e.clientX,e.clientY);
+    if(hit)openWordEditor(hit,canvas,pi,e.clientX,e.clientY);
+    else showToast(canvas.parentElement.querySelector('.word-hit')?'Toque em cima de um texto do PDF':'Este PDF não tem texto editável (é imagem ou digitalizado)',2600);
+    return;
+  }
   if(tool==='text'){
     const r=canvas.getBoundingClientRect();
     const nx=(e.clientX-r.left)/r.width,ny=(e.clientY-r.top)/r.height;
@@ -2906,10 +2912,14 @@ function showTio(canvas,pi,clientX,clientY,nx,ny,strokeIdx){
     row2.appendChild(sw);
   });
   overlay.appendChild(row2);
-  let top=clientY-br.top+body.scrollTop+10,left=clientX-br.left+10;
-  left=Math.min(br.width-240,Math.max(8,left));
-  overlay.style.cssText='position:absolute;top:'+top+'px;left:'+left+'px;';
-  body.appendChild(overlay);pendingTio={overlay,pi,nx,ny};
+  const top=clientY-br.top+body.scrollTop+10;
+  overlay.style.cssText='position:absolute;top:'+top+'px;left:0;visibility:hidden;';
+  body.appendChild(overlay);
+  placeInsideBody(overlay,clientX-br.left+10);
+  pendingTio={overlay,pi,nx,ny};
+  // tocar fora salva o texto (o toque só fecha a caixa, não abre outra)
+  pendingTio.outside=e=>{if(overlay.contains(e.target))return;if(e.target.closest&&e.target.closest('.annot-layer')){e.stopPropagation();e.preventDefault();}commit();};
+  setTimeout(()=>{if(pendingTio&&pendingTio.overlay===overlay)document.addEventListener('pointerdown',pendingTio.outside,{capture:true});},0);
   setTimeout(()=>{inp.focus();inp.select();},50);
   function commit(){
     const txt=inp.value.trim();
@@ -2917,6 +2927,7 @@ function showTio(canvas,pi,clientX,clientY,nx,ny,strokeIdx){
       if(!annotPages[pi])annotPages[pi]={strokes:[],redoStack:[]};
       annotPages[pi].redoStack=[];
       const stroke={tool:'text',text:txt,color:curColor,size:curSize,nx,ny};
+      const tb=strokeBounds(stroke,canvas.width,canvas.height);if(tb&&tb.x1>0.99)stroke.nx=Math.max(0.01,nx-(tb.x1-0.99)); // não deixa o texto sair da página
       if(strokeIdx!==null)annotPages[pi].strokes[strokeIdx]=stroke;
       else annotPages[pi].strokes.push(stroke);
       replayAll(canvas.getContext('2d'),annotPages[pi].strokes,canvas.width,canvas.height);saveAnnots();
@@ -2926,7 +2937,13 @@ function showTio(canvas,pi,clientX,clientY,nx,ny,strokeIdx){
   ok.onclick=commit;cancel.onclick=dismissTio;
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}if(e.key==='Escape')dismissTio();});
 }
-function dismissTio(){if(pendingTio){pendingTio.overlay.remove();pendingTio=null;}}
+function dismissTio(){if(pendingTio){if(pendingTio.outside)document.removeEventListener('pointerdown',pendingTio.outside,{capture:true});pendingTio.overlay.remove();pendingTio=null;}}
+/* posiciona um popup absoluto dentro da área visível do PDF (considera rolagem e zoom) */
+function placeInsideBody(el,leftInView){
+  const body=document.getElementById('pdfBody'),w=el.offsetWidth,vw=body.clientWidth;
+  const x=Math.min(vw-w-8,Math.max(8,leftInView));
+  el.style.left=(body.scrollLeft+Math.max(8,x))+'px';el.style.visibility='';
+}
 
 /* ── EDITABLE PDF TEXT LAYER ── */
 async function buildTextLayer(page,vp,tel,pdfCanvas,annotCanvas,pi){
@@ -2940,7 +2957,7 @@ async function buildTextLayer(page,vp,tel,pdfCanvas,annotCanvas,pi){
       const fontH=Math.abs(tx[3])*vp.scale;
       const w=(item.width*vp.scale)||fontH*item.str.length*0.6;
       const hit=document.createElement('div');hit.className='word-hit';
-      hit.style.cssText='left:'+(pt[0]/cw*100).toFixed(3)+'%;top:'+((pt[1]-fontH)/ch*100).toFixed(3)+'%;width:'+(w/cw*100).toFixed(3)+'%;height:'+(fontH*1.2/ch*100).toFixed(3)+'%;pointer-events:none;';
+      hit.style.cssText='left:'+(pt[0]/cw*100).toFixed(3)+'%;top:'+((pt[1]-fontH)/ch*100).toFixed(3)+'%;width:'+(w/cw*100).toFixed(3)+'%;height:'+(fontH*1.2/ch*100).toFixed(3)+'%;pointer-events:'+(tool==='editpdf'?'auto':'none')+';';
       hit.dataset.orig=item.str;hit.dataset.x=(pt[0]/cw).toFixed(4);hit.dataset.y=(pt[1]/ch).toFixed(4);hit.dataset.sz=fontH.toFixed(1);hit.dataset.pi=pi;
       hit.addEventListener('pointerdown',e=>{if(tool!=='editpdf')return;e.stopPropagation();openWordEditor(hit,annotCanvas,pi,e.clientX,e.clientY);});
       tel.appendChild(hit);
@@ -2948,6 +2965,16 @@ async function buildTextLayer(page,vp,tel,pdfCanvas,annotCanvas,pi){
   }catch(e){}
 }
 
+/* texto do PDF mais próximo do toque (tolerância de alguns px, bom para o dedo) */
+function nearestWordHit(canvas,x,y){
+  const pad=12;let best=null,bd=Infinity;
+  canvas.parentElement.querySelectorAll('.word-hit').forEach(h=>{
+    const r=h.getBoundingClientRect();
+    const dx=x<r.left?r.left-x:x>r.right?x-r.right:0,dy=y<r.top?r.top-y:y>r.bottom?y-r.bottom:0,d=Math.hypot(dx,dy);
+    if(d<=pad&&d<bd){bd=d;best=h;}
+  });
+  return best;
+}
 function openWordEditor(hit,canvas,pi,clientX,clientY){
   dismissWordEditor();
   const body=document.getElementById('pdfBody');const br=body.getBoundingClientRect();
@@ -2956,10 +2983,13 @@ function openWordEditor(hit,canvas,pi,clientX,clientY){
   const ok=document.createElement('button');ok.className='word-editor-ok';ok.textContent='OK';
   const cancel=document.createElement('button');cancel.className='word-editor-x';cancel.textContent='✕';
   editor.appendChild(ok);editor.appendChild(cancel);
-  let top=clientY-br.top+body.scrollTop+8,left=clientX-br.left-90;
-  left=Math.min(br.width-200,Math.max(8,left));
-  editor.style.cssText='position:absolute;top:'+top+'px;left:'+left+'px;';
+  const top=clientY-br.top+body.scrollTop+8;
+  editor.style.cssText='position:absolute;top:'+top+'px;left:0;visibility:hidden;';
   body.appendChild(editor);activeWordEditor=editor;
+  placeInsideBody(editor,clientX-br.left-90);
+  const outside=e=>{if(editor.contains(e.target))return;if(e.target.closest&&e.target.closest('.annot-layer')){e.stopPropagation();e.preventDefault();}commit();};
+  editor._outside=outside;
+  setTimeout(()=>{if(activeWordEditor===editor)document.addEventListener('pointerdown',outside,{capture:true});},0);
   setTimeout(()=>{inp.focus();inp.select();},40);
   function commit(){
     const newText=inp.value;
@@ -2982,7 +3012,7 @@ function openWordEditor(hit,canvas,pi,clientX,clientY){
   ok.onclick=commit;cancel.onclick=dismissWordEditor;
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}if(e.key==='Escape')dismissWordEditor();});
 }
-function dismissWordEditor(){if(activeWordEditor){activeWordEditor.remove();activeWordEditor=null;}}
+function dismissWordEditor(){if(activeWordEditor){if(activeWordEditor._outside)document.removeEventListener('pointerdown',activeWordEditor._outside,{capture:true});activeWordEditor.remove();activeWordEditor=null;}}
 
 /* ── KEYBOARD ── */
 document.addEventListener('keydown',e=>{
