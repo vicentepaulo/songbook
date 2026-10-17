@@ -200,6 +200,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 .annot-bar::-webkit-scrollbar{display:none;}
 .audio-player-bar{display:none;align-items:center;gap:7px;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .audio-player-bar .audio-seek-wrap{flex:1;}
+.sync-btn.on{background:#f97316;color:#fff;border-color:#f97316;}
+.pdf-screen.sync-mode .annot-layer{pointer-events:auto !important;touch-action:pan-x pan-y pinch-zoom !important;cursor:pointer !important;}
+.app-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);z-index:70;max-width:calc(100vw - 32px);padding:10px 16px;border-radius:999px;background:rgba(15,15,19,.94);border:1px solid var(--border2);color:#fff;font-size:14px;font-family:'Outfit',sans-serif;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;}
+.app-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .audio-tools-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .audio-tools-menu{position:fixed;z-index:58;display:none;flex-direction:column;gap:8px;width:280px;max-width:calc(100vw - 16px);padding:12px 14px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);box-shadow:0 8px 28px rgba(0,0,0,.55);}
 .audio-tools-menu.open{display:flex;}
@@ -557,6 +561,9 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
       <span class="audio-time" id="audioTimeDur">0:00</span>
     </div>
     <div class="sep"></div>
+    <button class="tool-btn sync-btn" id="syncBtn" onclick="toggleSyncMode()" title="Marcar tempo: toque nos símbolos para ligá-los ao ponto atual da música">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 15"/><line x1="9" y1="2" x2="15" y2="2"/><line x1="12" y1="2" x2="12" y2="5"/></svg>
+    </button>
     <button class="tool-btn audio-tools-btn" id="audioToolsBtn" onclick="toggleAudioTools(event)" title="Velocidade e repetir trecho">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
     </button>
@@ -615,6 +622,7 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
   <div class="pdf-body" id="pdfBody"></div>
 </div>
 
+<div class="app-toast" id="appToast"></div>
 <!-- VELOCIDADE / REPETIR TRECHO (abre pelo ícone do player) -->
 <div class="audio-tools-menu" id="audioToolsMenu">
   <div class="atm-title">Velocidade</div>
@@ -685,7 +693,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.8', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.9', APP_VERSION_DATE='16/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -1695,6 +1703,7 @@ async function toggleSongAudio(btn,songId){
   btn.classList.remove('loading');
 }
 function updateAllAudioUI(){
+  updateSyncHighlight();
   if(loopEnabled&&loopStart!==null&&loopEnd!==null&&activeAudioEl&&activeAudioEl.currentTime>=loopEnd){
     activeAudioEl.currentTime=loopStart;
     if(activeAudioEl.paused)activeAudioEl.play();
@@ -2044,7 +2053,7 @@ function openResetConfirm(){
 
 /* ── PDF OPEN/CLOSE ── */
 async function openSong(path,si){
-  stopRecording();
+  stopRecording();syncCurrent=null;syncCurrentPi=null;
   currentSong={path,si};annotPages={};
   activeCanvas=null;activeCtx=null;activePi=null;
   readMode=true;zoomLevel=1;
@@ -2071,7 +2080,7 @@ function showUploadZone(body,warn){
 function closePdf(){
   const screen=document.getElementById('pdfScreen');
   screen.classList.remove('visible','read-mode');
-  currentPdfDoc=null;annotPages={};dismissTio();dismissWordEditor();readMode=false;stopAutoScroll();stopRecording();closeAudioTools();
+  currentPdfDoc=null;annotPages={};dismissTio();dismissWordEditor();readMode=false;stopAutoScroll();stopRecording();closeAudioTools();if(syncMode)toggleSyncMode(false);syncCurrent=null;syncCurrentPi=null;
 }
 
 let viewDocs=[];
@@ -2263,6 +2272,7 @@ function replayAll(ctx,strokes,cw,ch){
     ctx.stroke();ctx.restore();
   }
   drawLedgerLines(ctx,strokes,cw,ch);
+  drawSyncBadges(ctx,strokes,cw,ch);
   drawNoteNames(ctx,strokes,cw,ch);
   drawSelection(ctx,strokes,cw,ch);
 }
@@ -2290,6 +2300,7 @@ function getPos(canvas,e){
 }
 
 function onDown(canvas,pi,e){
+  if(syncMode){syncTap={pi,x:e.clientX,y:e.clientY};return;}
   e.preventDefault();if(readMode)return;
   activeCanvas=canvas;activeCtx=canvas.getContext('2d');activePi=pi;
   if(tool==='text'){
@@ -2338,6 +2349,7 @@ function onDown(canvas,pi,e){
 }
 
 function onMove(canvas,pi,e){
+  if(syncMode)return;
   if(readMode)return;
   if(marquee&&marquee.pi===pi){
     e.preventDefault();
@@ -2363,6 +2375,11 @@ function onMove(canvas,pi,e){
 }
 
 function onUp(canvas,pi,e){
+  if(syncMode){
+    const t=syncTap;syncTap=null;
+    if(t&&t.pi===pi&&e.type==='pointerup'&&Math.hypot(e.clientX-t.x,e.clientY-t.y)<10)syncMarkAt(canvas,pi,e);
+    return;
+  }
   if(marquee&&marquee.pi===pi){
     const m=marquee;marquee=null;hideGuides();
     const r=canvas.getBoundingClientRect();
@@ -2446,6 +2463,7 @@ function symbolLabel(s){if(s.kind==='music')return (MUSIC_GLYPHS[s.value]||{}).l
 function drawSymbol(ctx,s,cw,ch){
   const S=(s.size||SYMBOL_DEFAULT_SIZE)*(cw/800),cx=s.nx*cw,cy=s.ny*ch;
   ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.fillStyle=s.color||SYMBOL_DEFAULT_COLOR;
+  if(s===syncCurrent){ctx.fillStyle=SYNC_COLOR;ctx.shadowColor='rgba(249,115,22,.75)';ctx.shadowBlur=S*0.35;}
   if(s.kind==='music'&&MUSIC_GLYPHS[s.value]){
     const u=musicUnit(s,cw);ctx.translate(cx,cy);ctx.scale(u,u);ctx.strokeStyle=ctx.fillStyle;ctx.lineCap='round';ctx.lineJoin='round';
     MUSIC_GLYPHS[s.value].parts.forEach((p,i)=>{const path=musicPath(s.value,i);if(p.w){ctx.lineWidth=p.w;ctx.stroke(path);}else ctx.fill(path,'evenodd');});
@@ -2654,6 +2672,65 @@ function insertMusic(k){
   replayAll(p.canvas.getContext('2d'),annotPages[p.pi].strokes,p.canvas.width,p.canvas.height);saveAnnots();
 }
 
+/* ── ACOMPANHAMENTO DA MÚSICA NO PDF ──
+   Com "Marcar tempo" ligado, tocar num símbolo grava nele o ponto atual do áudio
+   (separado para Referência e Banda). Tocando a música, o símbolo do trecho atual
+   fica laranja e a página rola até ele. */
+const SYNC_COLOR='#f97316';
+let syncMode=false,syncTap=null,syncCurrent=null,syncCurrentPi=null;
+let _toastTimer=null;
+function showToast(msg,ms){const t=document.getElementById('appToast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(_toastTimer);_toastTimer=setTimeout(()=>t.classList.remove('show'),ms||2200);}
+function toggleSyncMode(force){
+  syncMode=typeof force==='boolean'?force:!syncMode;
+  document.getElementById('syncBtn').classList.toggle('on',syncMode);
+  document.getElementById('pdfScreen').classList.toggle('sync-mode',syncMode);
+  syncTap=null;
+  Object.keys(annotPages).forEach(pi=>redrawPage(+pi)); // mostra/esconde as marcas de tempo
+  if(syncMode)showToast(activeAudioEl?'Toque nos símbolos para marcar o ponto atual da música':'Dê play na música e toque nos símbolos para marcar o ponto',3200);
+}
+function syncMarkAt(canvas,pi,e){
+  const r=canvas.getBoundingClientRect();
+  const hit=findSymbolHit(pi,(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height,canvas.width,canvas.height);
+  if(hit===null){showToast('Toque em cima de um símbolo');return;}
+  if(!activeAudioEl||!currentSong||activeAudioSongId!==playerSong().id){showToast('Dê play na música primeiro');return;}
+  const s=annotPages[pi].strokes[hit],t=Math.round(activeAudioEl.currentTime*100)/100;
+  s.sync=s.sync||{};s.sync[activeAudioSource]=t;
+  saveAnnots();syncCurrent=null;updateSyncHighlight(true);
+  showToast((activeAudioSource==='band'?'Banda':'Referência')+': marcado em '+fmtTime(t));
+}
+function drawSyncBadges(ctx,strokes,cw,ch){
+  if(!syncMode)return;
+  const src=activeAudioEl?activeAudioSource:playerSource;
+  strokes.forEach(o=>{
+    if(o.tool!=='symbol'||!o.sync||o.sync[src]===undefined)return;
+    const b=strokeBounds(o,cw,ch);if(!b)return;
+    const r=Math.max(4,cw/150);
+    ctx.save();ctx.globalAlpha=1;ctx.shadowBlur=0;ctx.fillStyle=SYNC_COLOR;ctx.strokeStyle='#fff';ctx.lineWidth=r/3;
+    ctx.beginPath();ctx.arc(b.x1*cw+r*0.6,b.y0*ch-r*0.2,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+  });
+}
+/* símbolo do ponto atual = o de maior tempo que já passou (na fonte que está tocando) */
+function updateSyncHighlight(force){
+  let best=null,bestPi=null,bestT=-1;
+  if(activeAudioEl&&currentSong&&activeAudioSongId===(playerSong()||{}).id){
+    const now=activeAudioEl.currentTime+0.05,src=activeAudioSource;
+    for(const k in annotPages)for(const o of annotPages[k].strokes){
+      const t=o.sync&&o.sync[src];
+      if(t!==undefined&&t<=now&&t>bestT){bestT=t;best=o;bestPi=+k;}
+    }
+  }
+  if(best===syncCurrent&&!force)return;
+  const prevPi=syncCurrentPi;syncCurrent=best;syncCurrentPi=bestPi;
+  if(prevPi!==null)redrawPage(prevPi);
+  if(bestPi!==null&&bestPi!==prevPi)redrawPage(bestPi);
+  if(best&&!syncMode)scrollSyncIntoView(best,bestPi);
+}
+function scrollSyncIntoView(o,pi){
+  const c=pageCanvas(pi),body=document.getElementById('pdfBody');if(!c||!body)return;
+  const r=c.getBoundingClientRect(),br=body.getBoundingClientRect(),y=r.top+o.ny*r.height;
+  if(y<br.top+60||y>br.bottom-60)body.scrollBy({top:y-(br.top+br.height*0.35),behavior:'smooth'});
+}
+
 /* ── IDENTIFICADOR DE NOTAS ──
    Na folha pautada, cada nota ganha uma etiqueta com o nome (Dó…Si), calculado pela clave
    da pauta (a clave mais próxima à esquerda; sem clave = Sol), pela linha/espaço da cabeça
@@ -2744,6 +2821,14 @@ function showSymbolPopup(canvas,pi,idx,clientX,clientY){
   popup.appendChild(colorRow);
   const delBtn=document.createElement('button');delBtn.className='text-popup-btn del';delBtn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg> Excluir';
   delBtn.onclick=()=>{dismissTextPopup();const i=annotPages[pi].strokes.indexOf(s);if(i>=0)annotPages[pi].strokes.splice(i,1);redraw();};
+  if(s.sync&&(s.sync.ref!==undefined||s.sync.band!==undefined)){
+    const row=document.createElement('div');row.className='sym-popup-row';
+    const lbl=document.createElement('span');lbl.className='tio-size-val';lbl.style.textAlign='left';
+    lbl.textContent='⏱ '+[s.sync.ref!==undefined?'Ref. '+fmtTime(s.sync.ref):'',s.sync.band!==undefined?'Banda '+fmtTime(s.sync.band):''].filter(Boolean).join(' · ');
+    const rm=document.createElement('button');rm.type='button';rm.className='tio-size-btn';rm.style.width='auto';rm.style.padding='0 8px';rm.textContent='Remover tempo';
+    rm.onclick=()=>{delete s.sync;row.remove();if(syncCurrent===s)syncCurrent=null;redraw();};
+    row.append(lbl,rm);popup.appendChild(row);
+  }
   popup.appendChild(delBtn);
   popup.addEventListener('pointerdown',e=>e.stopPropagation());
   let top=clientY-br.top+body.scrollTop+8,left=clientX-br.left+8;
