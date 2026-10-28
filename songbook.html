@@ -212,6 +212,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 .atm-hint{font-size:12px;color:var(--text2);line-height:1.35;margin-top:-2px;}
 .atm-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
 .atm-row .speed-select{flex:1;}
+.atm-val{min-width:86px;text-align:center;font-size:14px;color:var(--text);font-family:'Outfit',sans-serif;}
+.atm-link{background:none;border:none;color:var(--accent2);font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;padding:4px;}
+.audio-tools-menu .scroll-fab{width:36px;height:36px;box-shadow:none;border:1px solid var(--border2);}
 .audio-player-bar::-webkit-scrollbar{display:none;}
 .audio-player-bar.open{display:flex;}
 .src-seg{display:flex;border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0;}
@@ -564,7 +567,7 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     <button class="tool-btn sync-btn" id="syncBtn" onclick="toggleSyncMode()" title="Marcar tempo: toque nos símbolos para ligá-los ao ponto atual da música">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 14.5 15"/><line x1="9" y1="2" x2="15" y2="2"/><line x1="12" y1="2" x2="12" y2="5"/></svg>
     </button>
-    <button class="tool-btn audio-tools-btn" id="audioToolsBtn" onclick="toggleAudioTools(event)" title="Velocidade e repetir trecho">
+    <button class="tool-btn audio-tools-btn" id="audioToolsBtn" onclick="toggleAudioTools(event)" title="Velocidade, tom, repetir trecho e rolagem">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
     </button>
   </div>
@@ -642,6 +645,13 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
       <option value="0.5">0.5x</option>
     </select>
   </div>
+  <div class="atm-title">Tom</div>
+  <div class="atm-row">
+    <button class="tool-btn" onclick="changePitch(-1)" title="Meio tom abaixo">−</button>
+    <span class="atm-val" id="pitchLbl">Original</span>
+    <button class="tool-btn" onclick="changePitch(1)" title="Meio tom acima">+</button>
+    <button type="button" class="atm-link" id="pitchResetBtn" onclick="setPitch(0)" style="display:none;">Voltar ao original</button>
+  </div>
   <div class="atm-title">Repetir trecho</div>
   <div class="atm-hint">Toque em <strong>A</strong> no início e em <strong>B</strong> no fim do trecho, depois ative a repetição.</div>
   <div class="atm-row">
@@ -654,6 +664,15 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     <button class="tool-btn" id="loopClearBtn" onclick="clearLoop()" title="Limpar loop" style="display:none;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
+  </div>
+  <div class="atm-title">Rolagem automática do PDF</div>
+  <div class="atm-row">
+    <button class="scroll-fab" id="scrollFab" onclick="toggleAutoScroll()">
+    <svg id="scrollFabIcon" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+  </button>
+    <button class="tool-btn" onclick="changeScrollSpeed(-1)" title="Mais devagar">−</button>
+    <span class="atm-val" id="scrollSpeedLbl">×1</span>
+    <button class="tool-btn" onclick="changeScrollSpeed(1)" title="Mais rápido">+</button>
   </div>
 </div>
 
@@ -668,18 +687,6 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
   </div>
 </div>
 
-<div class="scroll-controls" id="scrollControls">
-  <div class="scroll-cluster">
-    <button class="scroll-btn" onclick="changeScrollSpeed(1)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-    <div class="scroll-sep"></div>
-    <div class="scroll-lbl" id="scrollSpeedLbl">×1</div>
-    <div class="scroll-sep"></div>
-    <button class="scroll-btn" onclick="changeScrollSpeed(-1)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
-  </div>
-  <button class="scroll-fab" id="scrollFab" onclick="toggleAutoScroll()">
-    <svg id="scrollFabIcon" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-  </button>
-</div>
 
 <!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay">
@@ -701,7 +708,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.14', APP_VERSION_DATE='28/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.15', APP_VERSION_DATE='28/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -714,7 +721,7 @@ let pendingTio=null, pendingPopup=null, movingText=null;
 let zoomLevel=1;
 const ZOOM_MIN=0.5,ZOOM_MAX=4,ZOOM_STEP=0.25;
 const SCROLL_SPEEDS=[0.3,0.6,1,1.5,2,3,4];
-let scrollSpeedIdx=2, autoScrolling=false, scrollRAF=null, lastScrollTime=null;
+let scrollSpeedIdx=2, autoScrolling=false, scrollRAF=null, lastScrollTime=null, scrollAcc=0;
 let td=null;
 let activeWordEditor=null;
 
@@ -1067,6 +1074,7 @@ function toggleAutoScroll(){
     lastScrollTime=null;
     scrollRAF=requestAnimationFrame(doScroll);
   }else{stopAutoScroll();}
+  updateAudioToolsBadge();
 }
 function stopAutoScroll(){
   autoScrolling=false;
@@ -1075,6 +1083,7 @@ function stopAutoScroll(){
   const icon=document.getElementById('scrollFabIcon');
   if(fab)fab.classList.remove('playing');
   if(icon)icon.innerHTML='<polygon points="5 3 19 12 5 21 5 3"/>';
+  updateAudioToolsBadge();
 }
 function doScroll(ts){
   if(!autoScrolling)return;
@@ -1082,7 +1091,9 @@ function doScroll(ts){
   if(!body){stopAutoScroll();return;}
   if(lastScrollTime===null)lastScrollTime=ts;
   const dt=Math.min(ts-lastScrollTime,100);lastScrollTime=ts;
-  body.scrollTop+=SCROLL_SPEEDS[scrollSpeedIdx]*(dt/16.67);
+  // guarda a fração de pixel entre quadros: em telas de 120/144 Hz o passo por quadro é < 1px e o navegador o descartaria
+  scrollAcc+=SCROLL_SPEEDS[scrollSpeedIdx]*(dt/16.67);
+  const step=Math.floor(scrollAcc);if(step>=1){body.scrollTop+=step;scrollAcc-=step;}
   if(body.scrollTop+body.clientHeight>=body.scrollHeight-4){stopAutoScroll();return;}
   scrollRAF=requestAnimationFrame(doScroll);
 }
@@ -1747,6 +1758,7 @@ async function loadAndPlayAudio(songId,source){
     const url=URL.createObjectURL(blob);
     const audio=new Audio(url);
     audio.playbackRate=currentAudioRate;
+    if(pitchSemis!==0||pitchNode){try{await ensurePitchGraph(audio);}catch(e){}}
     audio.addEventListener('play',updateAllAudioUI);
     audio.addEventListener('pause',updateAllAudioUI);
     audio.addEventListener('timeupdate',updateAllAudioUI);
@@ -1849,6 +1861,64 @@ function clearLoop(){
   loopStart=null;loopEnd=null;loopEnabled=false;
   updateLoopUI();
 }
+/* ── TOM (transposição em semitons, sem mudar a velocidade) ──
+   O áudio passa por um "pitch shifter" de duas leituras com janelas cruzadas.
+   Só entra no caminho do som quando o tom for mudado pela primeira vez. */
+const PITCH_MIN=-6,PITCH_MAX=6;
+let pitchSemis=0,audioCtx=null,pitchNode=null,pitchLoading=null;
+const PITCH_WORKLET=`class PitchShifter extends AudioWorkletProcessor{
+  constructor(){super();this.ratio=1;this.N=Math.round(sampleRate*0.08);this.buf=[];this.w=0;this.d=0;this.port.onmessage=e=>{this.ratio=e.data.ratio;};}
+  process(inputs,outputs){
+    const inp=inputs[0],out=outputs[0];if(!inp||!inp.length)return true;
+    const N=this.N,r=this.ratio,len=inp[0].length;
+    while(this.buf.length<inp.length)this.buf.push(new Float32Array(N));
+    for(let i=0;i<len;i++){
+      const d1=this.d,d2=(this.d+N/2)%N,g1=Math.pow(Math.sin(Math.PI*d1/N),2),g2=1-g1;
+      for(let c=0;c<inp.length;c++){
+        const b=this.buf[c];b[this.w]=inp[c][i];
+        if(!out[c])continue;
+        if(r===1){out[c][i]=inp[c][i];continue;}
+        let p1=this.w-d1;if(p1<0)p1+=N;let p2=this.w-d2;if(p2<0)p2+=N;
+        const a0=Math.floor(p1),fa=p1-a0,b0=Math.floor(p2),fb=p2-b0;
+        out[c][i]=(b[a0]*(1-fa)+b[(a0+1)%N]*fa)*g1+(b[b0]*(1-fb)+b[(b0+1)%N]*fb)*g2;
+      }
+      this.w=(this.w+1)%N;this.d+=1-r;if(this.d<0)this.d+=N;else if(this.d>=N)this.d-=N;
+    }
+    return true;
+  }
+}
+registerProcessor('pitch-shifter',PitchShifter);`;
+async function ensurePitchGraph(audio){
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return false;
+  if(!audioCtx)audioCtx=new AC();
+  if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  if(!pitchNode){
+    if(!audioCtx.audioWorklet)return false;
+    if(!pitchLoading)pitchLoading=audioCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([PITCH_WORKLET],{type:'application/javascript'})));
+    await pitchLoading;
+    if(!pitchNode){pitchNode=new AudioWorkletNode(audioCtx,'pitch-shifter');pitchNode.connect(audioCtx.destination);}
+  }
+  if(audio&&!audio._pitchSrc){audio._pitchSrc=audioCtx.createMediaElementSource(audio);audio._pitchSrc.connect(pitchNode);}
+  pitchNode.port.postMessage({ratio:Math.pow(2,pitchSemis/12)});
+  return true;
+}
+// o som que passa pelo processador fica mudo se o navegador suspender o áudio: retoma a cada toque
+document.addEventListener('pointerdown',()=>{if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});},{capture:true});
+function pitchLabel(n){return n===0?'Original':(n>0?'+':'−')+Math.abs(n)+(Math.abs(n)>1?' semitons':' semitom');}
+async function setPitch(n){
+  pitchSemis=Math.max(PITCH_MIN,Math.min(PITCH_MAX,n));
+  document.getElementById('pitchLbl').textContent=pitchLabel(pitchSemis);
+  document.getElementById('pitchResetBtn').style.display=pitchSemis?'':'none';
+  updateAudioToolsBadge();
+  if(pitchSemis===0&&!pitchNode)return;
+  try{
+    const ok=await ensurePitchGraph(activeAudioEl);
+    if(!ok){pitchSemis=0;document.getElementById('pitchLbl').textContent=pitchLabel(0);updateAudioToolsBadge();showToast('Este navegador não permite mudar o tom');}
+  }catch(e){showToast('Não foi possível mudar o tom: '+(e&&e.message?e.message:e));}
+}
+function changePitch(d){setPitch(pitchSemis+d);}
+
 function toggleAudioTools(e){
   if(e)e.stopPropagation();
   const m=document.getElementById('audioToolsMenu');
@@ -1865,9 +1935,10 @@ function closeAudioTools(){const m=document.getElementById('audioToolsMenu');if(
 /* o ícone fica destacado quando a velocidade não é 1x ou a repetição está ligada */
 function updateAudioToolsBadge(){
   const b=document.getElementById('audioToolsBtn');if(!b)return;
-  const on=currentAudioRate!==1||loopEnabled;
+  const on=currentAudioRate!==1||loopEnabled||pitchSemis!==0||autoScrolling;
   b.classList.toggle('active',on);
-  b.title='Velocidade e repetir trecho'+(on?' ('+(currentAudioRate!==1?currentAudioRate+'x':'')+(currentAudioRate!==1&&loopEnabled?' · ':'')+(loopEnabled?'repetindo':'')+')':'');
+  const parts=[currentAudioRate!==1?currentAudioRate+'x':'',pitchSemis?pitchLabel(pitchSemis):'',loopEnabled?'repetindo':'',autoScrolling?'rolando':''].filter(Boolean);
+  b.title='Velocidade, tom, repetir trecho e rolagem'+(parts.length?' ('+parts.join(' · ')+')':'');
 }
 function updateLoopUI(){
   const canEnable=loopStart!==null&&loopEnd!==null;
