@@ -608,12 +608,20 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
       </button>
     </div>
     <div class="sep"></div>
+    <div id="undoGrp" style="display:flex;gap:5px;align-items:center;">
     <button class="tool-btn" onclick="annotUndo()" title="Desfazer">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
     </button>
     <button class="tool-btn" onclick="annotRedo()" title="Refazer">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
     </button>
+    </div>
+    <div id="nudgeGrp" style="display:none;gap:5px;align-items:center;" title="Mover os objetos selecionados">
+    <button class="tool-btn" onpointerdown="startNudge(event,'left')" title="Mover para a esquerda"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <button class="tool-btn" onpointerdown="startNudge(event,'up')" title="Mover para cima"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+    <button class="tool-btn" onpointerdown="startNudge(event,'down')" title="Mover para baixo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button class="tool-btn" onpointerdown="startNudge(event,'right')" title="Mover para a direita"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
     <div class="sep"></div>
     <button class="tool-btn danger" onclick="clearAnnotations()" title="Limpar anotações">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
@@ -693,7 +701,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.13', APP_VERSION_DATE='28/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.14', APP_VERSION_DATE='28/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -855,6 +863,8 @@ function setTool(t){
   ['Pen','Symbol','Music','Text','Move','Eraser'].forEach(n=>{const el=document.getElementById('t'+n);if(el)el.classList.toggle('on',n.toLowerCase()===t);});
   const ep=document.getElementById('tEditPdf');if(ep)ep.classList.toggle('on',t==='editpdf');
   document.getElementById('fontGrp').classList.toggle('visible',t==='text'||t==='move');
+  document.getElementById('undoGrp').style.display=t==='move'?'none':'flex';
+  document.getElementById('nudgeGrp').style.display=t==='move'?'flex':'none';
   document.getElementById('sizeGrp').style.display=(t==='text'||t==='move'||t==='editpdf'||t==='symbol'||t==='music')?'none':'flex';
   document.querySelectorAll('.word-hit').forEach(h=>h.style.pointerEvents=t==='editpdf'?'auto':'none');
   const cur=t==='eraser'?'cell':t==='text'?'text':t==='move'?'grab':t==='editpdf'?'text':(t==='symbol'||t==='music')?'copy':'crosshair';
@@ -869,6 +879,29 @@ function changeFontSize(d){
   if(resizeSelection(d))return;
   fontSize=Math.min(120,Math.max(8,fontSize+d));document.getElementById('fontLbl').textContent=fontSize;
 }
+/* ── SETAS: desloca os objetos selecionados (segurar repete) ── */
+const NUDGE_STEP=0.004; // fração da largura da página por toque (~2 pt no A4)
+let nudgeTimer=null,nudgeRepeat=null,nudgeMoved=false;
+function nudgeSelection(dir){
+  if(!selectionActive()){showToast('Selecione objetos com a ferramenta Mover');return false;}
+  const list=selectedStrokes();if(!list.length)return false;
+  const c=pageCanvas(selPi),dx=NUDGE_STEP,dy=NUDGE_STEP*(c?c.width/c.height:1);
+  const mx=dir==='left'?-dx:dir==='right'?dx:0,my=dir==='up'?-dy:dir==='down'?dy:0;
+  list.forEach(o=>{o.nx+=mx;o.ny+=my;});
+  redrawPage(selPi);nudgeMoved=true;return true;
+}
+function startNudge(e,dir){
+  e.preventDefault();stopNudge();
+  if(!nudgeSelection(dir))return;
+  nudgeTimer=setTimeout(()=>{nudgeRepeat=setInterval(()=>nudgeSelection(dir),60);},400);
+  document.addEventListener('pointerup',stopNudge,{once:true});
+  document.addEventListener('pointercancel',stopNudge,{once:true});
+}
+function stopNudge(){
+  clearTimeout(nudgeTimer);clearInterval(nudgeRepeat);nudgeTimer=nudgeRepeat=null;
+  if(nudgeMoved){nudgeMoved=false;saveAnnots();}
+}
+
 /* ── ESTILO DA SELEÇÃO (ferramenta Mover) ── */
 function selectionActive(){return tool==='move'&&selPi!==null&&selection.length>0&&annotPages[selPi];}
 function selectedStrokes(){return selection.filter(o=>annotPages[selPi].strokes.includes(o)&&(o.tool==='symbol'||o.tool==='text'));}
@@ -3054,6 +3087,8 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.getElementById('modalOverlay').classList.contains('visible')){document.querySelector('.btn-ok')&&document.querySelector('.btn-ok').click();}
   const typing=document.activeElement&&(/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)||document.activeElement.isContentEditable);
   if((e.key==='Delete'||e.key==='Backspace')&&selection.length&&!typing){e.preventDefault();deleteSelection();return;}
+  const arrowDir={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'}[e.key];
+  if(arrowDir&&!typing&&selectionActive()){e.preventDefault();nudgeSelection(arrowDir);clearTimeout(nudgeTimer);nudgeTimer=setTimeout(stopNudge,300);return;}
   if(e.ctrlKey&&e.key==='z')annotUndo();
   if(e.ctrlKey&&(e.key==='y'||e.key==='Y'))annotRedo();
 });
