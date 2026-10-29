@@ -624,6 +624,9 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     <button class="tool-btn" onpointerdown="startNudge(event,'up')" title="Mover para cima"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
     <button class="tool-btn" onpointerdown="startNudge(event,'down')" title="Mover para baixo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
     <button class="tool-btn" onpointerdown="startNudge(event,'right')" title="Mover para a direita"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+    <div class="sep"></div>
+    <button class="tool-btn" onclick="copySelection()" title="Copiar os objetos selecionados"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg></button>
+    <button class="tool-btn" id="pasteBtn" onclick="pasteClipboard()" title="Colar" disabled style="opacity:.4;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="15" y2="15"/></svg></button>
     </div>
     <div class="sep"></div>
     <button class="tool-btn danger" onclick="clearAnnotations()" title="Limpar anotações">
@@ -708,7 +711,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.15', APP_VERSION_DATE='28/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.16', APP_VERSION_DATE='28/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -907,6 +910,37 @@ function startNudge(e,dir){
 function stopNudge(){
   clearTimeout(nudgeTimer);clearInterval(nudgeRepeat);nudgeTimer=nudgeRepeat=null;
   if(nudgeMoved){nudgeMoved=false;saveAnnots();}
+}
+
+/* ── COPIAR / COLAR objetos selecionados ──
+   Cola na página que está mais visível. Na mesma página, cada colagem fica um pouco
+   deslocada para não cobrir o original; a cópia colada já vem selecionada para arrastar. */
+let annotClipboard=null,pasteCount=0;
+function copySelection(){
+  if(!selectionActive()){showToast('Selecione objetos com a ferramenta Mover');return;}
+  const list=selectedStrokes();if(!list.length)return;
+  annotClipboard={pi:selPi,items:JSON.parse(JSON.stringify(list))};pasteCount=0;
+  const b=document.getElementById('pasteBtn');if(b){b.disabled=false;b.style.opacity='';}
+  showToast(list.length===1?'1 objeto copiado':list.length+' objetos copiados');
+}
+function mostVisiblePage(){
+  const body=document.getElementById('pdfBody'),br=body.getBoundingClientRect();
+  let best=null,bestH=0;
+  document.querySelectorAll('.annot-layer').forEach((c,i)=>{const r=c.getBoundingClientRect();const h=Math.min(r.bottom,br.bottom)-Math.max(r.top,br.top);if(h>bestH){bestH=h;best=i;}});
+  return best;
+}
+function pasteClipboard(){
+  if(!annotClipboard||!annotClipboard.items.length)return;
+  const pi=mostVisiblePage();if(pi===null)return;
+  const c=pageCanvas(pi);
+  if(pi===annotClipboard.pi)pasteCount++;
+  const dx=pi===annotClipboard.pi?0.025*pasteCount:0,dy=dx*(c?c.width/c.height:1);
+  const items=JSON.parse(JSON.stringify(annotClipboard.items)).map(o=>{o.nx+=dx;o.ny+=dy;return o;});
+  if(!annotPages[pi])annotPages[pi]={strokes:[],redoStack:[]};
+  annotPages[pi].redoStack=[];annotPages[pi].strokes.push(...items);
+  if(tool!=='move')setTool('move');
+  setSelection(pi,items);saveAnnots();
+  showToast(items.length===1?'1 objeto colado':items.length+' objetos colados');
 }
 
 /* ── ESTILO DA SELEÇÃO (ferramenta Mover) ── */
@@ -3160,6 +3194,8 @@ document.addEventListener('keydown',e=>{
   if((e.key==='Delete'||e.key==='Backspace')&&selection.length&&!typing){e.preventDefault();deleteSelection();return;}
   const arrowDir={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'}[e.key];
   if(arrowDir&&!typing&&selectionActive()){e.preventDefault();nudgeSelection(arrowDir);clearTimeout(nudgeTimer);nudgeTimer=setTimeout(stopNudge,300);return;}
+  if(e.ctrlKey&&!typing&&(e.key==='c'||e.key==='C')&&selectionActive()){e.preventDefault();copySelection();return;}
+  if(e.ctrlKey&&!typing&&(e.key==='v'||e.key==='V')&&annotClipboard&&document.getElementById('pdfScreen').classList.contains('visible')){e.preventDefault();pasteClipboard();return;}
   if(e.ctrlKey&&e.key==='z')annotUndo();
   if(e.ctrlKey&&(e.key==='y'||e.key==='Y'))annotRedo();
 });
