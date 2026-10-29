@@ -214,6 +214,38 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 .atm-row .speed-select{flex:1;}
 .atm-val{min-width:86px;text-align:center;font-size:14px;color:var(--text);font-family:'Outfit',sans-serif;}
 .atm-link{background:none;border:none;color:var(--accent2);font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;padding:4px;}
+.tool-btn.atm-wide{width:100%;padding:0 12px;justify-content:center;gap:7px;font-family:'Outfit',sans-serif;font-size:14px;color:var(--text);}
+.stems-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:40;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.stems-screen.visible{transform:translateX(0);}
+.stems-body{flex:1;overflow-y:auto;padding:18px 16px 28px;display:flex;flex-direction:column;gap:16px;max-width:760px;width:100%;margin:0 auto;}
+.stems-progress{display:none;flex-direction:column;gap:12px;padding:22px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+.stems-progress.on{display:flex;}
+.stems-prog-title{font-size:17px;color:var(--text);font-weight:500;}
+.stems-bar{height:10px;border-radius:99px;background:var(--surface3);overflow:hidden;}
+.stems-bar>div{height:100%;width:0;background:var(--accent);transition:width .3s;}
+.stems-prog-detail{font-size:14px;color:var(--text2);min-height:20px;}
+.stems-prog-hint{font-size:13px;color:var(--text3);line-height:1.4;}
+.stems-progress .btn-cancel{align-self:flex-start;}
+.stems-mixer{display:none;flex-direction:column;gap:14px;}
+.stems-mixer.on{display:flex;}
+.stem-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+.stem-row.silent{opacity:.5;}
+.stem-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+.stem-name{width:72px;flex-shrink:0;font-size:15px;color:var(--text);}
+.stem-vol{flex:1;min-width:60px;accent-color:var(--accent);}
+.stem-pct{width:40px;text-align:right;font-size:12px;color:var(--text2);flex-shrink:0;}
+.stem-btn{width:36px;height:36px;font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;flex-shrink:0;}
+.stem-btn.mute.on{background:#dc2626;color:#fff;border-color:#dc2626;}
+.stem-btn.solo.on{background:#eab308;color:#111;border-color:#eab308;}
+.stems-transport{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);flex-wrap:wrap;}
+.stems-transport .audio-seek-wrap{flex:1;min-width:180px;}
+.stems-transport .play-pause-btn.playing{background:var(--accent);color:#fff;border-color:var(--accent);}
+.stems-transport .icon-pause{display:none;}
+.stems-transport .play-pause-btn.playing .icon-play{display:none;}
+.stems-transport .play-pause-btn.playing .icon-pause{display:block;}
+.stems-adjust{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 2px;}
+.stems-adjust{column-gap:22px;row-gap:10px;}
+.stems-adj-grp{display:flex;align-items:center;gap:8px;}
 .audio-tools-menu .scroll-fab{width:36px;height:36px;box-shadow:none;border:1px solid var(--border2);}
 .audio-player-bar::-webkit-scrollbar{display:none;}
 .audio-player-bar.open{display:flex;}
@@ -636,7 +668,718 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
   <div class="pdf-body" id="pdfBody"></div>
 </div>
 
+<!-- FAIXAS SEPARADAS (voz, bateria, baixo, outros) -->
+<div class="stems-screen" id="stemsScreen">
+  <div class="pdf-topbar">
+    <div class="pdf-topbar-left">
+      <button class="btn-icon" onclick="closeStems()" title="Voltar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+    </div>
+    <div class="pdf-title-group"><span class="pdf-song-name" id="stemsTitle">Faixas</span></div>
+    <div class="pdf-topbar-actions">
+      <button class="btn-icon" id="stemsMoreBtn" onclick="stemsOptions()" title="Opções das faixas" style="display:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+    </div>
+  </div>
+  <div class="stems-body">
+    <div class="stems-progress" id="stemsProgress">
+      <div class="stems-prog-title" id="stemsProgTitle">Preparando…</div>
+      <div class="stems-bar"><div id="stemsBarFill"></div></div>
+      <div class="stems-prog-detail" id="stemsProgDetail"></div>
+      <div class="stems-prog-hint">A separação é feita no próprio aparelho e pode levar vários minutos. Deixe o Songbook aberto, na frente, e a tela ligada até terminar.</div>
+      <button class="btn-cancel" id="stemsCancelBtn" onclick="cancelStems()">Cancelar</button>
+    </div>
+    <div class="stems-mixer" id="stemsMixer">
+      <div class="stems-transport">
+        <button class="tool-btn" onclick="stemsSkip(-10)" title="Voltar 10s"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg></button>
+        <button class="tool-btn play-pause-btn" id="stemsPlayBtn" onclick="stemsTogglePlay()" title="Tocar/Pausar">
+          <svg class="icon-play" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg>
+          <svg class="icon-pause" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16"/><rect x="14" y="4" width="5" height="16"/></svg>
+        </button>
+        <button class="tool-btn" onclick="stemsSkip(10)" title="Avançar 10s"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg></button>
+        <div class="audio-seek-wrap">
+          <span class="audio-time" id="stemsTimeCur">0:00</span>
+          <input type="range" class="audio-seek" id="stemsSeek" min="0" max="1000" value="0" oninput="stemsSeekTo(this.value/1000)">
+          <span class="audio-time" id="stemsTimeDur">0:00</span>
+        </div>
+      </div>
+      <div id="stemsTracks" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div class="stems-adjust">
+        <div class="stems-adj-grp"><span class="atm-title">Velocidade</span>
+        <select class="speed-select" id="stemsSpeed" onchange="stemsSetRate(parseFloat(this.value))">
+          <option value="1">1x</option><option value="0.85">0.85x</option><option value="0.7">0.7x</option><option value="0.5">0.5x</option>
+        </select></div>
+        <div class="stems-adj-grp"><span class="atm-title">Tom</span>
+        <button class="tool-btn" onclick="stemsSetPitch(stemsSemis-1)" title="Meio tom abaixo">−</button>
+        <span class="atm-val" id="stemsPitchLbl">Original</span>
+        <button class="tool-btn" onclick="stemsSetPitch(stemsSemis+1)" title="Meio tom acima">+</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="app-toast" id="appToast"></div>
+<script type="text/plain" id="stemsWorkerSrc">
+/* Separador de faixas (roda num Worker, fora da tela).
+   Modelo HTDemucs (Meta, licença MIT) em ONNX + ONNX Runtime Web (WASM).
+   Pré/pós-processamento adaptado de demucs-web 1.0.2 (MIT, © timcsy).
+   Motor e modelo ficam guardados no Cache do navegador: só baixam na 1ª vez. */
+/* demucs-web — licença:
+MIT License
+
+Copyright (c) 2024
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+const ORT_URL='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.wasm.bundle.min.mjs';
+const WASM_URL='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort-wasm-simd-threaded.wasm';
+const MODEL_URL='https://huggingface.co/timcsy/demucs-web-onnx/resolve/92e33df61cfc9eb820272aaa62d2ef6dcf4d950d/htdemucs_embedded.onnx';
+const CACHE='songbook-stems-v1';
+/**
+ * Constants for Demucs model
+ */
+const CONSTANTS = {
+  SAMPLE_RATE: 44100,
+  FFT_SIZE: 4096,
+  HOP_SIZE: 1024,
+  TRAINING_SAMPLES: 343980,
+  MODEL_SPEC_BINS: 2048,
+  MODEL_SPEC_FRAMES: 336,
+  SEGMENT_OVERLAP: 0.25,
+  TRACKS: ['drums', 'bass', 'other', 'vocals'],
+
+  // Default model URL (Hugging Face Hub)
+  DEFAULT_MODEL_URL: 'https://huggingface.co/timcsy/demucs-web-onnx/resolve/main/htdemucs_embedded.onnx'
+};
+
+/**
+ * Fast FFT/iFFT implementation using Cooley-Tukey radix-2 algorithm
+ */
+
+const fftTwiddles = new Map();
+const ifftTwiddles = new Map();
+const hannWindows = new Map();
+
+function getFFTTwiddles(n) {
+  if (fftTwiddles.has(n)) return fftTwiddles.get(n);
+  const real = new Float32Array(n / 2);
+  const imag = new Float32Array(n / 2);
+  for (let k = 0; k < n / 2; k++) {
+    const angle = -2 * Math.PI * k / n;
+    real[k] = Math.cos(angle);
+    imag[k] = Math.sin(angle);
+  }
+  const twiddles = { real, imag };
+  fftTwiddles.set(n, twiddles);
+  return twiddles;
+}
+
+function getIFFTTwiddles(n) {
+  if (ifftTwiddles.has(n)) return ifftTwiddles.get(n);
+  const real = new Float32Array(n / 2);
+  const imag = new Float32Array(n / 2);
+  for (let k = 0; k < n / 2; k++) {
+    const angle = 2 * Math.PI * k / n;
+    real[k] = Math.cos(angle);
+    imag[k] = Math.sin(angle);
+  }
+  const twiddles = { real, imag };
+  ifftTwiddles.set(n, twiddles);
+  return twiddles;
+}
+
+function getHannWindow(size) {
+  if (hannWindows.has(size)) return hannWindows.get(size);
+  const window = new Float32Array(size);
+  for (let i = 0; i < size; i++) {
+    window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / size));
+  }
+  hannWindows.set(size, window);
+  return window;
+}
+
+function bitReverse(n, bits) {
+  let result = 0;
+  for (let i = 0; i < bits; i++) {
+    result = (result << 1) | (n & 1);
+    n >>= 1;
+  }
+  return result;
+}
+
+function fft(realOut, imagOut, realIn, n) {
+  const bits = Math.log2(n) | 0;
+  const twiddles = getFFTTwiddles(n);
+
+  for (let i = 0; i < n; i++) {
+    const j = bitReverse(i, bits);
+    realOut[i] = realIn[j];
+    imagOut[i] = 0;
+  }
+
+  for (let size = 2; size <= n; size *= 2) {
+    const halfSize = size / 2;
+    const step = n / size;
+    for (let i = 0; i < n; i += size) {
+      for (let j = 0; j < halfSize; j++) {
+        const k = j * step;
+        const tReal = twiddles.real[k];
+        const tImag = twiddles.imag[k];
+        const idx1 = i + j;
+        const idx2 = i + j + halfSize;
+        const eReal = realOut[idx1];
+        const eImag = imagOut[idx1];
+        const oReal = realOut[idx2] * tReal - imagOut[idx2] * tImag;
+        const oImag = realOut[idx2] * tImag + imagOut[idx2] * tReal;
+        realOut[idx1] = eReal + oReal;
+        imagOut[idx1] = eImag + oImag;
+        realOut[idx2] = eReal - oReal;
+        imagOut[idx2] = eImag - oImag;
+      }
+    }
+  }
+}
+
+function ifft(realOut, imagOut, realIn, imagIn, n) {
+  const bits = Math.log2(n) | 0;
+  const twiddles = getIFFTTwiddles(n);
+
+  for (let i = 0; i < n; i++) {
+    const j = bitReverse(i, bits);
+    realOut[i] = realIn[j];
+    imagOut[i] = imagIn[j];
+  }
+
+  for (let size = 2; size <= n; size *= 2) {
+    const halfSize = size / 2;
+    const step = n / size;
+    for (let i = 0; i < n; i += size) {
+      for (let j = 0; j < halfSize; j++) {
+        const k = j * step;
+        const tReal = twiddles.real[k];
+        const tImag = twiddles.imag[k];
+        const idx1 = i + j;
+        const idx2 = i + j + halfSize;
+        const eReal = realOut[idx1];
+        const eImag = imagOut[idx1];
+        const oReal = realOut[idx2] * tReal - imagOut[idx2] * tImag;
+        const oImag = realOut[idx2] * tImag + imagOut[idx2] * tReal;
+        realOut[idx1] = eReal + oReal;
+        imagOut[idx1] = eImag + oImag;
+        realOut[idx2] = eReal - oReal;
+        imagOut[idx2] = eImag - oImag;
+      }
+    }
+  }
+
+  for (let i = 0; i < n; i++) {
+    realOut[i] /= n;
+    imagOut[i] /= n;
+  }
+}
+
+function stft(signal, fftSize, hopSize) {
+  const numFrames = Math.floor((signal.length - fftSize) / hopSize) + 1;
+  const numBins = fftSize / 2 + 1;
+  const window = getHannWindow(fftSize);
+  const scale = 1.0 / Math.sqrt(fftSize);
+
+  const specReal = new Float32Array(numFrames * numBins);
+  const specImag = new Float32Array(numFrames * numBins);
+  const frameReal = new Float32Array(fftSize);
+  const frameImag = new Float32Array(fftSize);
+  const windowedFrame = new Float32Array(fftSize);
+
+  for (let frame = 0; frame < numFrames; frame++) {
+    const start = frame * hopSize;
+    for (let i = 0; i < fftSize; i++) {
+      windowedFrame[i] = signal[start + i] * window[i];
+    }
+    fft(frameReal, frameImag, windowedFrame, fftSize);
+    const outOffset = frame * numBins;
+    for (let k = 0; k < numBins; k++) {
+      specReal[outOffset + k] = frameReal[k] * scale;
+      specImag[outOffset + k] = frameImag[k] * scale;
+    }
+  }
+
+  return { real: specReal, imag: specImag, numFrames, numBins };
+}
+
+function istft(specReal, specImag, numFrames, numBins, fftSize, hopSize, length) {
+  const outputLength = length || (numFrames - 1) * hopSize + fftSize;
+  const output = new Float32Array(outputLength);
+  const windowSum = new Float32Array(outputLength);
+  const window = getHannWindow(fftSize);
+  const scale = Math.sqrt(fftSize);
+
+  const fullReal = new Float32Array(fftSize);
+  const fullImag = new Float32Array(fftSize);
+  const outReal = new Float32Array(fftSize);
+  const outImag = new Float32Array(fftSize);
+
+  for (let frame = 0; frame < numFrames; frame++) {
+    fullReal.fill(0);
+    fullImag.fill(0);
+
+    for (let k = 0; k < numBins; k++) {
+      fullReal[k] = specReal[frame * numBins + k];
+      fullImag[k] = specImag[frame * numBins + k];
+    }
+
+    for (let k = 1; k < numBins - 1; k++) {
+      fullReal[fftSize - k] = fullReal[k];
+      fullImag[fftSize - k] = -fullImag[k];
+    }
+
+    ifft(outReal, outImag, fullReal, fullImag, fftSize);
+
+    const start = frame * hopSize;
+    for (let i = 0; i < fftSize && start + i < outputLength; i++) {
+      output[start + i] += outReal[i] * window[i] * scale;
+      windowSum[start + i] += window[i] * window[i];
+    }
+  }
+
+  for (let i = 0; i < outputLength; i++) {
+    if (windowSum[i] > 1e-8) {
+      output[i] /= windowSum[i];
+    }
+  }
+
+  return output;
+}
+
+function reflectPad(signal, padLeft, padRight) {
+  const length = signal.length;
+  const output = new Float32Array(padLeft + length + padRight);
+
+  for (let i = 0; i < padLeft; i++) {
+    const srcIdx = Math.min(padLeft - i, length - 1);
+    output[i] = signal[srcIdx];
+  }
+
+  output.set(signal, padLeft);
+
+  for (let i = 0; i < padRight; i++) {
+    const srcIdx = Math.max(0, length - 2 - i);
+    output[padLeft + length + i] = signal[srcIdx];
+  }
+
+  return output;
+}
+
+/**
+ * Demucs audio processor - Core separation logic
+ */
+
+
+
+
+const { SAMPLE_RATE, FFT_SIZE, HOP_SIZE, TRAINING_SAMPLES, MODEL_SPEC_BINS, MODEL_SPEC_FRAMES, SEGMENT_OVERLAP, TRACKS } = CONSTANTS;
+
+/**
+ * Convert model frequency output to complex spectrogram per track
+ */
+function standaloneMask(freqOutput) {
+  const numTracks = 4;
+  const numChannels = 4;
+  const numBins = MODEL_SPEC_BINS;
+  const numFrames = MODEL_SPEC_FRAMES;
+  const result = [];
+
+  for (let t = 0; t < numTracks; t++) {
+    const trackSpec = {
+      leftReal: new Float32Array(numBins * numFrames),
+      leftImag: new Float32Array(numBins * numFrames),
+      rightReal: new Float32Array(numBins * numFrames),
+      rightImag: new Float32Array(numBins * numFrames)
+    };
+
+    for (let f = 0; f < numFrames; f++) {
+      for (let b = 0; b < numBins; b++) {
+        const baseIdx = t * numChannels * numBins * numFrames;
+        const outIdx = b * numFrames + f;
+        trackSpec.leftReal[outIdx] = freqOutput[baseIdx + 0 * numBins * numFrames + b * numFrames + f];
+        trackSpec.leftImag[outIdx] = freqOutput[baseIdx + 1 * numBins * numFrames + b * numFrames + f];
+        trackSpec.rightReal[outIdx] = freqOutput[baseIdx + 2 * numBins * numFrames + b * numFrames + f];
+        trackSpec.rightImag[outIdx] = freqOutput[baseIdx + 3 * numBins * numFrames + b * numFrames + f];
+      }
+    }
+    result.push(trackSpec);
+  }
+
+  return result;
+}
+
+/**
+ * Convert complex spectrogram back to time domain (iSTFT with proper offsets)
+ */
+function standaloneIspec(trackSpec, targetLength) {
+  const numBins = MODEL_SPEC_BINS;
+  const numFrames = MODEL_SPEC_FRAMES;
+  const hopLength = HOP_SIZE;
+  const paddedBins = numBins + 1;
+  const paddedFrames = numFrames + 4;
+
+  const padChannel = (real, imag) => {
+    const paddedReal = new Float32Array(paddedFrames * paddedBins);
+    const paddedImag = new Float32Array(paddedFrames * paddedBins);
+
+    for (let f = 0; f < numFrames; f++) {
+      for (let b = 0; b < numBins; b++) {
+        const srcIdx = b * numFrames + f;
+        const dstFrame = f + 2;
+        const dstIdx = dstFrame * paddedBins + b;
+        paddedReal[dstIdx] = real[srcIdx];
+        paddedImag[dstIdx] = imag[srcIdx];
+      }
+    }
+    return { real: paddedReal, imag: paddedImag };
+  };
+
+  const leftPadded = padChannel(trackSpec.leftReal, trackSpec.leftImag);
+  const rightPadded = padChannel(trackSpec.rightReal, trackSpec.rightImag);
+
+  const centerPad = FFT_SIZE / 2;
+  const pad = Math.floor(hopLength / 2) * 3;
+  const istftLength = (paddedFrames - 1) * hopLength + FFT_SIZE;
+
+  const leftOut = istft(leftPadded.real, leftPadded.imag, paddedFrames, paddedBins, FFT_SIZE, hopLength, istftLength);
+  const rightOut = istft(rightPadded.real, rightPadded.imag, paddedFrames, paddedBins, FFT_SIZE, hopLength, istftLength);
+
+  const totalOffset = centerPad + pad;
+  const left = leftOut.subarray(totalOffset, totalOffset + targetLength);
+  const right = rightOut.subarray(totalOffset, totalOffset + targetLength);
+
+  return { left: new Float32Array(left), right: new Float32Array(right) };
+}
+
+/**
+ * Prepare model input from stereo audio
+ */
+function prepareModelInput(leftChannel, rightChannel) {
+  const inputLength = TRAINING_SAMPLES;
+
+  const paddedLeft = new Float32Array(inputLength);
+  const paddedRight = new Float32Array(inputLength);
+  const copyLen = Math.min(leftChannel.length, inputLength);
+  paddedLeft.set(leftChannel.subarray(0, copyLen));
+  paddedRight.set(rightChannel.subarray(0, copyLen));
+
+  const le = Math.ceil(inputLength / HOP_SIZE);
+  const pad = Math.floor(HOP_SIZE / 2) * 3;
+  const padRight = pad + le * HOP_SIZE - inputLength;
+
+  const stftInputLeft = reflectPad(paddedLeft, pad, padRight);
+  const stftInputRight = reflectPad(paddedRight, pad, padRight);
+
+  const centerPad = FFT_SIZE / 2;
+  const centeredLeft = reflectPad(stftInputLeft, centerPad, centerPad);
+  const centeredRight = reflectPad(stftInputRight, centerPad, centerPad);
+
+  const stftLeft = stft(centeredLeft, FFT_SIZE, HOP_SIZE);
+  const stftRight = stft(centeredRight, FFT_SIZE, HOP_SIZE);
+
+  const numBins = MODEL_SPEC_BINS;
+  const numFrames = MODEL_SPEC_FRAMES;
+  const frameOffset = 2;
+
+  const magSpec = new Float32Array(4 * numBins * numFrames);
+
+  for (let f = 0; f < numFrames; f++) {
+    const srcFrame = f + frameOffset;
+    for (let b = 0; b < numBins; b++) {
+      const srcIdx = srcFrame * stftLeft.numBins + b;
+      magSpec[0 * numBins * numFrames + b * numFrames + f] = stftLeft.real[srcIdx];
+      magSpec[1 * numBins * numFrames + b * numFrames + f] = stftLeft.imag[srcIdx];
+      magSpec[2 * numBins * numFrames + b * numFrames + f] = stftRight.real[srcIdx];
+      magSpec[3 * numBins * numFrames + b * numFrames + f] = stftRight.imag[srcIdx];
+    }
+  }
+
+  const waveform = new Float32Array(2 * inputLength);
+  waveform.set(paddedLeft, 0);
+  waveform.set(paddedRight, inputLength);
+
+  return { waveform, magSpec, numBins, numFrames, originalLength: leftChannel.length };
+}
+
+/**
+ * Main Demucs processor class
+ */
+class DemucsProcessor {
+  constructor(options = {}) {
+    this.ort = options.ort || null;
+    this.session = null;
+    this.modelPath = options.modelPath || './htdemucs_embedded.onnx';
+    this.sessionOptions = options.sessionOptions || {};
+    this.onProgress = options.onProgress || (() => {});
+    this.onLog = options.onLog || (() => {});
+    this.onDownloadProgress = options.onDownloadProgress || (() => {});
+  }
+
+  async loadModel(modelPathOrBuffer) {
+    if (!this.ort) {
+      throw new Error('ONNX Runtime not provided. Pass ort in constructor options.');
+    }
+
+    this.onLog('model', 'Loading model...');
+
+    let modelBuffer;
+    if (modelPathOrBuffer instanceof ArrayBuffer) {
+      modelBuffer = modelPathOrBuffer;
+    } else {
+      const response = await fetch(modelPathOrBuffer || this.modelPath);
+
+      // Check if we can track progress
+      const contentLength = response.headers.get('Content-Length');
+      if (contentLength && response.body) {
+        const totalSize = parseInt(contentLength, 10);
+        const reader = response.body.getReader();
+        const chunks = [];
+        let loadedSize = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          loadedSize += value.length;
+          this.onDownloadProgress(loadedSize, totalSize);
+        }
+
+        // Combine chunks into single ArrayBuffer
+        const combined = new Uint8Array(loadedSize);
+        let offset = 0;
+        for (const chunk of chunks) {
+          combined.set(chunk, offset);
+          offset += chunk.length;
+        }
+        modelBuffer = combined.buffer;
+      } else {
+        // Fallback: no progress tracking
+        modelBuffer = await response.arrayBuffer();
+      }
+    }
+
+    const defaultSessionOptions = {
+      executionProviders: ['webgpu', 'wasm'],
+      graphOptimizationLevel: 'basic'
+    };
+
+    this.session = await this.ort.InferenceSession.create(modelBuffer, {
+      ...defaultSessionOptions,
+      ...this.sessionOptions
+    });
+
+    this.onLog('model', 'Model loaded successfully');
+    return this.session;
+  }
+
+  async separate(leftChannel, rightChannel) {
+    if (!this.session) {
+      throw new Error('Model not loaded. Call loadModel() first.');
+    }
+
+    const totalSamples = leftChannel.length;
+    const stride = Math.floor(TRAINING_SAMPLES * (1 - SEGMENT_OVERLAP));
+    const numSegments = Math.ceil((totalSamples - TRAINING_SAMPLES) / stride) + 1;
+
+    const outputs = TRACKS.map(() => ({
+      left: new Float32Array(totalSamples),
+      right: new Float32Array(totalSamples)
+    }));
+    const weights = new Float32Array(totalSamples);
+
+    let segmentIdx = 0;
+
+    for (let start = 0; start < totalSamples; start += stride) {
+      const end = Math.min(start + TRAINING_SAMPLES, totalSamples);
+      const segmentLength = end - start;
+
+      const segLeft = new Float32Array(TRAINING_SAMPLES);
+      const segRight = new Float32Array(TRAINING_SAMPLES);
+
+      for (let i = 0; i < segmentLength; i++) {
+        segLeft[i] = leftChannel[start + i];
+        segRight[i] = rightChannel[start + i];
+      }
+
+      const input = prepareModelInput(segLeft, segRight);
+
+      const waveformTensor = new this.ort.Tensor('float32', input.waveform, [1, 2, TRAINING_SAMPLES]);
+      const magSpecTensor = new this.ort.Tensor('float32', input.magSpec, [1, 4, MODEL_SPEC_BINS, MODEL_SPEC_FRAMES]);
+
+      const feeds = {};
+      feeds[this.session.inputNames[0]] = waveformTensor;
+      if (this.session.inputNames.length > 1) {
+        feeds[this.session.inputNames[1]] = magSpecTensor;
+      }
+
+      const inferResults = await this.session.run(feeds);
+
+      let timeData = null, timeShape = null;
+      let freqData = null;
+
+      for (const name of this.session.outputNames) {
+        const tensor = inferResults[name];
+        if (tensor.dims.length === 4 && tensor.dims[2] === 2) {
+          timeData = tensor.data;
+          timeShape = tensor.dims;
+        } else if (tensor.dims.length === 5 && tensor.dims[2] === 4) {
+          freqData = tensor.data;
+        }
+      }
+
+      if (!timeData) {
+        throw new Error('Could not find time-domain output tensor');
+      }
+
+      let combinedOutputs = null;
+      if (freqData) {
+        const trackSpecs = standaloneMask(freqData);
+        combinedOutputs = [];
+
+        for (let t = 0; t < 4; t++) {
+          const freqOutput = standaloneIspec(trackSpecs[t], TRAINING_SAMPLES);
+          const numChannels = timeShape[2];
+          const samples = timeShape[3];
+          const timeLeft = new Float32Array(samples);
+          const timeRight = new Float32Array(samples);
+
+          for (let i = 0; i < samples; i++) {
+            timeLeft[i] = timeData[t * numChannels * samples + 0 * samples + i];
+            timeRight[i] = timeData[t * numChannels * samples + 1 * samples + i];
+          }
+
+          const combined = {
+            left: new Float32Array(samples),
+            right: new Float32Array(samples)
+          };
+          for (let i = 0; i < samples; i++) {
+            combined.left[i] = timeLeft[i] + (freqOutput.left[i] || 0);
+            combined.right[i] = timeRight[i] + (freqOutput.right[i] || 0);
+          }
+          combinedOutputs.push(combined);
+        }
+      }
+
+      const numTracks = timeShape[1];
+      const numChannels = timeShape[2];
+      const samples = timeShape[3];
+
+      const overlapWindow = new Float32Array(segmentLength);
+      for (let i = 0; i < segmentLength; i++) {
+        const fadeIn = Math.min(i / (stride * 0.5), 1);
+        const fadeOut = Math.min((segmentLength - i) / (stride * 0.5), 1);
+        overlapWindow[i] = Math.min(fadeIn, fadeOut);
+      }
+
+      for (let t = 0; t < numTracks; t++) {
+        for (let i = 0; i < segmentLength && start + i < totalSamples; i++) {
+          let leftVal, rightVal;
+          if (combinedOutputs) {
+            leftVal = combinedOutputs[t].left[i];
+            rightVal = combinedOutputs[t].right[i];
+          } else {
+            const leftIdx = t * numChannels * samples + 0 * samples + i;
+            const rightIdx = t * numChannels * samples + 1 * samples + i;
+            leftVal = timeData[leftIdx];
+            rightVal = timeData[rightIdx];
+          }
+          outputs[t].left[start + i] += leftVal * overlapWindow[i];
+          outputs[t].right[start + i] += rightVal * overlapWindow[i];
+        }
+      }
+
+      for (let i = 0; i < segmentLength && start + i < totalSamples; i++) {
+        weights[start + i] += overlapWindow[i];
+      }
+
+      segmentIdx++;
+      this.onProgress({
+        progress: segmentIdx / numSegments,
+        currentSegment: segmentIdx,
+        totalSegments: numSegments
+      });
+    }
+
+    for (let t = 0; t < TRACKS.length; t++) {
+      for (let i = 0; i < totalSamples; i++) {
+        if (weights[i] > 0) {
+          outputs[t].left[i] /= weights[i];
+          outputs[t].right[i] /= weights[i];
+        }
+      }
+    }
+
+    return {
+      drums: outputs[0],
+      bass: outputs[1],
+      other: outputs[2],
+      vocals: outputs[3]
+    };
+  }
+}
+
+const post=(m,t)=>self.postMessage(m,t||[]);
+async function getCached(url,what){
+  let c=null;
+  try{c=await caches.open(CACHE);const hit=await c.match(url);if(hit)return await hit.arrayBuffer();}catch(e){c=null;}
+  const r=await fetch(url);if(!r.ok)throw new Error('download '+r.status);
+  const total=+r.headers.get('Content-Length')||0;let buf;
+  if(r.body&&what){
+    const rd=r.body.getReader(),parts=[];let got=0,last=0;
+    for(;;){const{done,value}=await rd.read();if(done)break;parts.push(value);got+=value.length;const now=Date.now();if(now-last>250){last=now;post({type:'dl',what,loaded:got,total});}}
+    const u=new Uint8Array(got);let o=0;for(const p of parts){u.set(p,o);o+=p.length;}buf=u.buffer;
+  }else buf=await r.arrayBuffer();
+  if(c){try{await c.put(url,new Response(buf));}catch(e){}}
+  return buf;
+}
+self.onmessage=async e=>{
+  const m=e.data;if(!m||m.cmd!=='run')return;
+  try{
+    post({type:'stage',stage:'engine'});
+    const ortSrc=await getCached(ORT_URL,null);
+    const ort=await import(URL.createObjectURL(new Blob([ortSrc],{type:'text/javascript'})));
+    ort.env.wasm.wasmBinary=await getCached(WASM_URL,'engine');
+    ort.env.wasm.numThreads=m.threads||1;
+    let model=await getCached(MODEL_URL,'model');
+    post({type:'stage',stage:'load'});
+    const p=new DemucsProcessor({ort,sessionOptions:{executionProviders:['wasm']},
+      onProgress:x=>post({type:'seg',done:x.currentSegment,total:Math.max(x.currentSegment,segTotal)})});
+    const segTotal=Math.ceil(m.L.length/Math.floor(TRAINING_SAMPLES*(1-SEGMENT_OVERLAP))); // a conta da biblioteca fica 1 a menos
+    await p.loadModel(model);model=null;
+    post({type:'stage',stage:'sep',threads:ort.env.wasm.numThreads});
+    const out=await p.separate(m.L,m.R);
+    for(const name of ['vocals','drums','bass','other']){
+      const t=out[name],n=t.left.length,d=new Int16Array(n*2);
+      for(let i=0;i<n;i++){
+        let a=t.left[i],b=t.right[i];a=a>1?1:a<-1?-1:a;b=b>1?1:b<-1?-1:b;
+        d[2*i]=a*32767;d[2*i+1]=b*32767;
+      }
+      out[name]=null;
+      post({type:'track',name,data:d.buffer},[d.buffer]);
+    }
+    post({type:'done'});
+  }catch(err){post({type:'error',msg:String(err&&err.message||err)});}
+};
+
+</script>
 <!-- VELOCIDADE / REPETIR TRECHO (abre pelo ícone do player) -->
 <div class="audio-tools-menu" id="audioToolsMenu">
   <div class="atm-title">Velocidade</div>
@@ -666,6 +1409,13 @@ mark{background:var(--accent-glow);color:inherit;padding:0 2px;border-radius:3px
     </button>
     <button class="tool-btn" id="loopClearBtn" onclick="clearLoop()" title="Limpar loop" style="display:none;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="atm-title">Separar faixas</div>
+  <div class="atm-row">
+    <button class="tool-btn atm-wide" id="stemsMenuBtn" onclick="closeAudioTools();openStemsForCurrent()" title="Separar voz, bateria, baixo e outros instrumentos">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="10" x2="16" y2="10"/><line x1="4" y1="14" x2="18" y2="14"/><line x1="4" y1="18" x2="12" y2="18"/></svg>
+      <span id="stemsMenuLbl">Separar faixas</span>
     </button>
   </div>
   <div class="atm-title">Rolagem automática do PDF</div>
@@ -711,7 +1461,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.17', APP_VERSION_DATE='28/10/2026'; // atualizar a cada publicação
+const APP_VERSION='1.18', APP_VERSION_DATE='28/10/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -783,7 +1533,7 @@ function loadMeta(){
   }catch(e){return{tags:[],nextId:1};}
 }
 function serializeTag(t){
-  return{id:t.id,name:t.name,color:t.color,open:t.open,songs:t.songs.map(s=>{const o={id:s.id,name:s.name,hasPdf:Array.isArray(s.docs)?s.docs.length>0:!!s.hasPdf,hasAudio:!!s.hasAudio};if(s.hasRec)o.hasRec=true;if(Array.isArray(s.docs))o.docs=s.docs.map(d=>d.kind?{id:d.id,name:d.name,kind:d.kind}:{id:d.id,name:d.name});if(s.note)o.note=s.note;return o;}),children:t.children.map(serializeTag)};
+  return{id:t.id,name:t.name,color:t.color,open:t.open,songs:t.songs.map(s=>{const o={id:s.id,name:s.name,hasPdf:Array.isArray(s.docs)?s.docs.length>0:!!s.hasPdf,hasAudio:!!s.hasAudio};if(s.hasRec)o.hasRec=true;if(s.hasStems)o.hasStems=true;if(Array.isArray(s.docs))o.docs=s.docs.map(d=>d.kind?{id:d.id,name:d.name,kind:d.kind}:{id:d.id,name:d.name});if(s.note)o.note=s.note;return o;}),children:t.children.map(serializeTag)};
 }
 function saveMeta(){
   meta.nextId=nextId;
@@ -1581,6 +2331,7 @@ function replaceSongAudio(ev,path,si){
       const check=await idbGet('audio',song.id);
       if(!check){alert('Não foi possível verificar o áudio salvo.');return;}
       stopActiveAudio();
+      if(song.hasStems){await deleteStems(song.id);song.hasStems=false;} // as faixas eram do áudio antigo
       song.hasAudio=true;saveMeta();
       if(nameInput)nameInput.value=keepName;
       openEditSong(path,si);render();
@@ -1597,6 +2348,7 @@ function removeSongAudio(path,si){
     {label:'Remover',cls:'btn-danger',action:async()=>{
       try{await idbDel('audio',song.id);}catch(e){}
       stopActiveAudio();
+      if(song.hasStems){await deleteStems(song.id);song.hasStems=false;}
       song.hasAudio=false;saveMeta();
       openEditSong(path,si);render();
       const ni=document.getElementById('mInput');if(ni)ni.value=keepName;
@@ -1922,15 +2674,19 @@ const PITCH_WORKLET=`class PitchShifter extends AudioWorkletProcessor{
   }
 }
 registerProcessor('pitch-shifter',PitchShifter);`;
-async function ensurePitchGraph(audio){
+async function ensurePitchModule(){
   const AC=window.AudioContext||window.webkitAudioContext;
   if(!AC)return false;
   if(!audioCtx)audioCtx=new AC();
   if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  if(!audioCtx.audioWorklet)return false;
+  if(!pitchLoading)pitchLoading=audioCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([PITCH_WORKLET],{type:'application/javascript'})));
+  await pitchLoading;
+  return true;
+}
+async function ensurePitchGraph(audio){
   if(!pitchNode){
-    if(!audioCtx.audioWorklet)return false;
-    if(!pitchLoading)pitchLoading=audioCtx.audioWorklet.addModule(URL.createObjectURL(new Blob([PITCH_WORKLET],{type:'application/javascript'})));
-    await pitchLoading;
+    if(!await ensurePitchModule())return false;
     if(!pitchNode){pitchNode=new AudioWorkletNode(audioCtx,'pitch-shifter');pitchNode.connect(audioCtx.destination);}
   }
   if(audio&&!audio._pitchSrc){audio._pitchSrc=audioCtx.createMediaElementSource(audio);audio._pitchSrc.connect(pitchNode);}
@@ -1953,10 +2709,247 @@ async function setPitch(n){
 }
 function changePitch(d){setPitch(pitchSemis+d);}
 
+/* ── SEPARAR FAIXAS (IA no próprio aparelho) ──
+   Usa só o áudio de referência. As 4 faixas ficam no IndexedDB (store 'audio', chaves
+   'stem:<id>:<faixa>', PCM 16 bits estéreo 44,1 kHz) e não entram no backup: dá para separar de novo. */
+const STEM_TRACKS=[{k:'vocals',n:'Voz',c:'#f472b6'},{k:'drums',n:'Bateria',c:'#fb923c'},{k:'bass',n:'Baixo',c:'#60a5fa'},{k:'other',n:'Outros',c:'#4ade80'}];
+const STEM_SR=44100;
+const stemKey=(id,k)=>'stem:'+id+':'+k;
+let stemsSong=null,stemsWorker=null,stemsWakeLock=null,stemsJob=null;
+function updateStemsMenu(){
+  const song=playerSong(),b=document.getElementById('stemsMenuBtn'),l=document.getElementById('stemsMenuLbl');if(!b)return;
+  b.style.opacity=song&&song.hasAudio?'':'.45';
+  b.title=song&&song.hasAudio?'Separar voz, bateria, baixo e outros instrumentos':'Precisa do áudio de referência (anexe em Editar música)';
+  l.textContent=song&&song.hasStems?'Abrir faixas separadas':'Separar faixas';
+}
+async function deleteStems(id){for(const t of STEM_TRACKS){try{await idbDel('audio',stemKey(id,t.k));}catch(e){}}}
+function openStemsForCurrent(){
+  const song=playerSong();if(!song)return;
+  if(!song.hasAudio){alert('Esta música não tem áudio de referência. Anexe o áudio em "Editar música" para separar as faixas.');return;}
+  if(song.hasStems){openStemsScreen(song);return;}
+  showModal('Separar faixas','<p class="confirm-msg">Vou separar o áudio de referência de "<strong>'+esc(song.name)+'</strong>" em <strong>Voz, Bateria, Baixo e Outros</strong>.</p>'
+    +'<p class="confirm-msg" style="margin-top:10px;">Na primeira vez são baixados cerca de <strong>195 MB</strong> (use Wi-Fi). Depois funciona sem internet. A separação pode levar vários minutos.</p>'
+    +(self.crossOriginIsolated?'':'<p class="confirm-msg" style="margin-top:10px;font-size:13px;">Dica: se o app acabou de atualizar, feche e abra o Songbook antes de separar. Assim ele usa todos os núcleos do aparelho e fica bem mais rápido.</p>'),[
+    {label:'Cancelar',cls:'btn-cancel',action:closeModal},
+    {label:'Separar',cls:'btn-ok',action:()=>{closeModal();openStemsScreen(song,true);}}
+  ]);
+}
+function stemsShow(mode){
+  document.getElementById('stemsProgress').classList.toggle('on',mode==='progress');
+  document.getElementById('stemsMixer').classList.toggle('on',mode==='mixer');
+  document.getElementById('stemsMoreBtn').style.display=mode==='mixer'?'flex':'none';
+}
+async function openStemsScreen(song,separate){
+  stemsSong=song;
+  if(activeAudioEl&&!activeAudioEl.paused)activeAudioEl.pause();
+  document.getElementById('stemsTitle').textContent=song.name;
+  document.getElementById('stemsScreen').classList.add('visible');
+  if(separate)runStemSeparation(song);
+  else await loadStemsMixer(song);
+}
+function closeStems(){
+  if(stemsJob){showModal('Separação em andamento','<p class="confirm-msg">Sair agora cancela a separação. Cancelar?</p>',[{label:'Continuar separando',cls:'btn-cancel',action:closeModal},{label:'Cancelar separação',cls:'btn-danger',action:()=>{closeModal();stopStemsJob();closeStems();}}]);return;}
+  stemsStop();stemsBuffers=null;
+  document.getElementById('stemsScreen').classList.remove('visible');
+  stemsSong=null;updateStemsMenu();
+}
+function stemsProgress(title,frac,detail){
+  document.getElementById('stemsProgTitle').textContent=title;
+  document.getElementById('stemsBarFill').style.width=Math.round(Math.max(0,Math.min(1,frac))*100)+'%';
+  document.getElementById('stemsProgDetail').textContent=detail||'';
+}
+function stopStemsJob(){
+  if(stemsWorker){stemsWorker.terminate();stemsWorker=null;}
+  stemsJob=null;releaseStemsWakeLock();
+}
+/* botão Cancelar/Voltar da tela de progresso */
+function cancelStems(){
+  stopStemsJob();
+  if(stemsSong&&stemsSong.hasStems)loadStemsMixer(stemsSong);
+  else closeStems();
+}
+function releaseStemsWakeLock(){if(stemsWakeLock){try{stemsWakeLock.release();}catch(e){}stemsWakeLock=null;}}
+async function runStemSeparation(song){
+  stemsStop();stemsBuffers=null;
+  stemsShow('progress');stemsProgress('Lendo o áudio de referência…',0,'');
+  document.getElementById('stemsCancelBtn').textContent='Cancelar';
+  const job={song,start:Date.now()};stemsJob=job;
+  try{if(navigator.wakeLock)stemsWakeLock=await navigator.wakeLock.request('screen');}catch(e){}
+  let L,R;
+  try{
+    const rec=await idbGet('audio',song.id);if(!rec)throw new Error('áudio de referência não encontrado');
+    const raw=rec instanceof Blob?await rec.arrayBuffer():rec.data;
+    const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+    const ab=await new OAC(2,1,STEM_SR).decodeAudioData(raw.slice(0));
+    L=new Float32Array(ab.getChannelData(0));R=ab.numberOfChannels>1?new Float32Array(ab.getChannelData(1)):new Float32Array(L);
+  }catch(e){stemsFail(job,'Não foi possível ler o áudio: '+(e&&e.message?e.message:e));return;}
+  if(stemsJob!==job)return;
+  const threads=self.crossOriginIsolated?Math.max(1,Math.min(8,navigator.hardwareConcurrency||4)):1;
+  let w;
+  try{w=new Worker(URL.createObjectURL(new Blob([document.getElementById('stemsWorkerSrc').textContent],{type:'text/javascript'})),{type:'module'});}
+  catch(e){stemsFail(job,'este navegador não consegue rodar o separador');return;}
+  stemsWorker=w;
+  const tracks={};let segT0=0,segDone0=0;
+  const mb=b=>(b/1048576).toFixed(0);
+  const slow=threads>1?'':' · 1 núcleo (modo lento)';
+  w.onmessage=async e=>{
+    const m=e.data;if(stemsJob!==job)return;
+    if(m.type==='stage'){
+      if(m.stage==='engine')stemsProgress('Preparando o separador…',0,'');
+      else if(m.stage==='load')stemsProgress('Carregando o modelo de IA…',0,'');
+      else if(m.stage==='sep'){segT0=Date.now();stemsProgress('Separando as faixas…',0,(threads>1?'Usando '+threads+' núcleos':'Usando 1 núcleo (modo lento)')+' · calculando o tempo…');}
+    }else if(m.type==='dl'){
+      const what=m.what==='model'?'Baixando o modelo de IA (só na 1ª vez)':'Baixando o separador (só na 1ª vez)';
+      stemsProgress(what+'…',m.total?m.loaded/m.total:0,mb(m.loaded)+(m.total?' de '+mb(m.total):'')+' MB');
+    }else if(m.type==='seg'){
+      if(m.done===1){segT0=Date.now();segDone0=1;}
+      const per=m.done>segDone0?(Date.now()-segT0)/(m.done-segDone0):0;
+      const left=per?Math.round(per*(m.total-m.done)/1000):null;
+      stemsProgress('Separando as faixas…',m.done/m.total,'Parte '+m.done+' de '+m.total+(left!==null?' · faltam cerca de '+(left>=90?Math.round(left/60)+' min':left+' s'):'')+slow);
+    }else if(m.type==='track'){tracks[m.name]=m.data;}
+    else if(m.type==='done'){
+      stemsProgress('Salvando as faixas…',1,'');
+      try{
+        for(const t of STEM_TRACKS)await idbSet('audio',stemKey(song.id,t.k),{data:tracks[t.k],sr:STEM_SR,ch:2});
+        song.hasStems=true;saveMeta();
+      }catch(err){stemsFail(job,'Erro ao salvar as faixas: '+(err&&err.message?err.message:err));return;}
+      stopStemsJob();
+      const min=Math.round((Date.now()-job.start)/60000);
+      showToast('Faixas separadas'+(min>=1?' em '+min+' min':''),3000);
+      updateStemsMenu();
+      if(stemsSong===song)loadStemsMixer(song,tracks);
+    }else if(m.type==='error'){stemsFail(job,m.msg);}
+  };
+  w.onerror=e=>{stemsFail(job,e&&e.message?e.message:'erro no separador');};
+  w.postMessage({cmd:'run',L,R,threads},[L.buffer,R.buffer]);
+}
+function stemsFail(job,msg){
+  if(stemsJob!==job)return;
+  stopStemsJob();
+  const mem=/memory|alloc|out of|RangeError|Aborted/i.test(msg);
+  const net=/fetch|download|network/i.test(msg);
+  stemsProgress('Não foi possível separar as faixas',0,(mem?'O aparelho ficou sem memória para a separação. Feche outros apps e abas e tente de novo. ':'')+(net?'Verifique a internet (o download só é preciso na 1ª vez). ':'')+'('+msg+')');
+  document.getElementById('stemsCancelBtn').textContent='Voltar';
+}
+
+/* ── MIXER DAS FAIXAS ── tocam juntas, sincronizadas, com volume/mudo/solo, velocidade e tom */
+let stemsBuffers=null,stemsNodes=null,stemsMix={},stemsPitch=null,stemsRate=1,stemsSemis=0;
+let stemsPlaying=false,stemsPos=0,stemsT0=0,stemsTimer=null,stemsDur=0;
+const STEMS_MIX_KEY='songbook_stems_mix_v1';
+function loadMixPrefs(id){try{const all=JSON.parse(localStorage.getItem(STEMS_MIX_KEY)||'{}');return all[id]||null;}catch(e){return null;}}
+function saveMixPrefs(){if(!stemsSong)return;try{const all=JSON.parse(localStorage.getItem(STEMS_MIX_KEY)||'{}');all[stemsSong.id]=stemsMix;localStorage.setItem(STEMS_MIX_KEY,JSON.stringify(all));}catch(e){}}
+async function loadStemsMixer(song,fresh){
+  stemsShow('progress');stemsProgress('Abrindo as faixas…',0,'');
+  document.getElementById('stemsCancelBtn').textContent='Voltar';
+  try{
+    if(!await ensurePitchModule())throw new Error('este navegador não tem Web Audio');
+    const bufs={};
+    for(const t of STEM_TRACKS){
+      let data=fresh&&fresh[t.k];
+      if(!data){const r=await idbGet('audio',stemKey(song.id,t.k));data=r&&r.data;}
+      if(!data){song.hasStems=false;saveMeta();updateStemsMenu();openStemsMissing(song);return;}
+      const pcm=new Int16Array(data),n=pcm.length>>1,b=audioCtx.createBuffer(2,n,STEM_SR),l=b.getChannelData(0),r=b.getChannelData(1);
+      for(let i=0;i<n;i++){l[i]=pcm[2*i]/32768;r[i]=pcm[2*i+1]/32768;}
+      bufs[t.k]=b;
+    }
+    if(stemsSong!==song)return;
+    stemsBuffers=bufs;stemsDur=bufs.vocals.duration;stemsPos=0;stemsPlaying=false;
+    const saved=loadMixPrefs(song.id)||{};
+    stemsMix={};STEM_TRACKS.forEach(t=>{const p=saved[t.k]||{};stemsMix[t.k]={vol:p.vol!=null?p.vol:1,mute:!!p.mute,solo:!!p.solo};});
+    stemsRate=currentAudioRate;stemsSemis=pitchSemis;
+    if(!stemsPitch){stemsPitch=new AudioWorkletNode(audioCtx,'pitch-shifter');stemsPitch.connect(audioCtx.destination);}
+    if(!stemsNodes){stemsNodes={};STEM_TRACKS.forEach(t=>{const g=audioCtx.createGain();g.connect(stemsPitch);stemsNodes[t.k]={gain:g,src:null};});}
+    renderStemRows();applyStemGains();stemsApplyPitch();
+    document.getElementById('stemsSpeed').value=String(stemsRate);
+    document.getElementById('stemsPitchLbl').textContent=pitchLabel(stemsSemis);
+    stemsShow('mixer');updateStemsTransport();
+  }catch(e){stemsProgress('Não foi possível abrir as faixas',0,String(e&&e.message||e));}
+}
+function openStemsMissing(song){
+  document.getElementById('stemsScreen').classList.remove('visible');stemsSong=null;
+  showModal('Faixas não encontradas','<p class="confirm-msg">As faixas separadas de "<strong>'+esc(song.name)+'</strong>" não estão neste aparelho (elas não vão no backup). Separar de novo?</p>',[
+    {label:'Cancelar',cls:'btn-cancel',action:closeModal},
+    {label:'Separar',cls:'btn-ok',action:()=>{closeModal();openStemsScreen(song,true);}}
+  ]);
+}
+function stemsOptions(){
+  const song=stemsSong;if(!song)return;
+  showModal('Faixas separadas','<p class="confirm-msg">Separar de novo substitui as faixas atuais. Apagar libera espaço no aparelho; dá para separar depois.</p>',[
+    {label:'Fechar',cls:'btn-cancel',action:closeModal},
+    {label:'Apagar faixas',cls:'btn-danger',action:async()=>{closeModal();stemsStop();stemsBuffers=null;await deleteStems(song.id);song.hasStems=false;saveMeta();closeStems();showToast('Faixas apagadas');}},
+    {label:'Separar de novo',cls:'btn-ok',action:()=>{closeModal();runStemSeparation(song);}}
+  ]);
+}
+function renderStemRows(){
+  const box=document.getElementById('stemsTracks');box.innerHTML='';
+  STEM_TRACKS.forEach(t=>{
+    const m=stemsMix[t.k],row=document.createElement('div');row.className='stem-row';row.dataset.k=t.k;
+    row.innerHTML='<span class="stem-dot" style="background:'+t.c+'"></span><span class="stem-name">'+t.n+'</span>'
+      +'<button class="tool-btn stem-btn mute" title="Silenciar">M</button><button class="tool-btn stem-btn solo" title="Solo: ouvir só esta faixa">S</button>'
+      +'<input type="range" class="stem-vol" min="0" max="150" value="'+Math.round(m.vol*100)+'" title="Volume"><span class="stem-pct"></span>';
+    row.querySelector('.mute').onclick=()=>{m.mute=!m.mute;applyStemGains();saveMixPrefs();};
+    row.querySelector('.solo').onclick=()=>{m.solo=!m.solo;applyStemGains();saveMixPrefs();};
+    const v=row.querySelector('.stem-vol');v.oninput=()=>{m.vol=v.value/100;applyStemGains();};v.onchange=saveMixPrefs;
+    box.appendChild(row);
+  });
+}
+function applyStemGains(){
+  if(!stemsNodes)return;
+  const anySolo=STEM_TRACKS.some(t=>stemsMix[t.k].solo);
+  STEM_TRACKS.forEach(t=>{
+    const m=stemsMix[t.k],silent=m.mute||(anySolo&&!m.solo),g=silent?0:m.vol;
+    stemsNodes[t.k].gain.gain.setTargetAtTime(g,audioCtx.currentTime,0.015);
+    const row=document.querySelector('.stem-row[data-k="'+t.k+'"]');if(!row)return;
+    row.classList.toggle('silent',silent);
+    row.querySelector('.mute').classList.toggle('on',m.mute);row.querySelector('.solo').classList.toggle('on',m.solo);
+    row.querySelector('.stem-pct').textContent=Math.round(m.vol*100)+'%';
+  });
+}
+/* a velocidade muda pelo playbackRate (que também mexe no tom); o processador de tom compensa */
+function stemsApplyPitch(){if(stemsPitch)stemsPitch.port.postMessage({ratio:Math.pow(2,stemsSemis/12)/stemsRate});}
+function stemsCurPos(){return stemsPlaying?Math.max(0,Math.min(stemsDur,stemsPos+(audioCtx.currentTime-stemsT0)*stemsRate)):stemsPos;}
+function stemsStart(){
+  if(!stemsBuffers||!audioCtx)return;
+  if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  if(activeAudioEl&&!activeAudioEl.paused)activeAudioEl.pause();
+  if(stemsPos>=stemsDur-0.05)stemsPos=0;
+  const when=audioCtx.currentTime+0.05;
+  STEM_TRACKS.forEach(t=>{const src=audioCtx.createBufferSource();src.buffer=stemsBuffers[t.k];src.playbackRate.value=stemsRate;src.connect(stemsNodes[t.k].gain);src.start(when,stemsPos);stemsNodes[t.k].src=src;});
+  stemsT0=when;stemsPlaying=true;
+  stemsNodes.vocals.src.onended=()=>{if(stemsPlaying){stemsStop();stemsPos=0;updateStemsTransport();}};
+  clearInterval(stemsTimer);stemsTimer=setInterval(updateStemsTransport,250);
+  updateStemsTransport();
+}
+function stemsStop(){
+  if(!stemsNodes)return;
+  if(stemsPlaying)stemsPos=stemsCurPos();
+  stemsPlaying=false;clearInterval(stemsTimer);
+  STEM_TRACKS.forEach(t=>{const n=stemsNodes[t.k];if(n.src){n.src.onended=null;try{n.src.stop();}catch(e){}n.src.disconnect();n.src=null;}});
+  updateStemsTransport();
+}
+function stemsTogglePlay(){if(stemsPlaying)stemsStop();else stemsStart();}
+function stemsSeekTo(f){const was=stemsPlaying;stemsStop();stemsPos=Math.max(0,Math.min(stemsDur,f*stemsDur));if(was)stemsStart();else updateStemsTransport();}
+function stemsSkip(sec){stemsSeekTo((stemsCurPos()+sec)/(stemsDur||1));}
+function stemsSetRate(r){
+  if(stemsPlaying){stemsPos=stemsCurPos();stemsT0=audioCtx.currentTime;}
+  stemsRate=r;
+  if(stemsNodes)STEM_TRACKS.forEach(t=>{const n=stemsNodes[t.k];if(n.src)n.src.playbackRate.value=r;});
+  stemsApplyPitch();
+}
+function stemsSetPitch(n){stemsSemis=Math.max(PITCH_MIN,Math.min(PITCH_MAX,n));document.getElementById('stemsPitchLbl').textContent=pitchLabel(stemsSemis);stemsApplyPitch();}
+function updateStemsTransport(){
+  const p=stemsCurPos();
+  document.getElementById('stemsTimeCur').textContent=fmtTime(p);
+  document.getElementById('stemsTimeDur').textContent=fmtTime(stemsDur);
+  const sk=document.getElementById('stemsSeek');if(document.activeElement!==sk)sk.value=stemsDur?Math.round(p/stemsDur*1000):0;
+  document.getElementById('stemsPlayBtn').classList.toggle('playing',stemsPlaying);
+}
+
 function toggleAudioTools(e){
   if(e)e.stopPropagation();
   const m=document.getElementById('audioToolsMenu');
   if(m.classList.contains('open')){closeAudioTools();return;}
+  updateStemsMenu();
   const r=document.getElementById('audioToolsBtn').getBoundingClientRect();
   m.classList.add('open');
   const w=m.offsetWidth;
@@ -2288,6 +3281,7 @@ async function deleteSongData(s){
   for(const id of ids){try{await idbDel('pdfs',id);await idbDel('annots',id);}catch(e){}}
   try{await idbDel('audio',s.id);}catch(e){}
   try{await idbDel('audio',recKey(s.id));}catch(e){}
+  await deleteStems(s.id);
 }
 function viewerOpenOn(path,si){
   return document.getElementById('pdfScreen').classList.contains('visible')&&currentSong&&currentSong.path===path&&currentSong.si===si;
@@ -3187,6 +4181,7 @@ function dismissWordEditor(){if(activeWordEditor){if(activeWordEditor._outside)d
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.getElementById('modalOverlay').classList.contains('visible')){closeModal();return;}
+    if(document.getElementById('stemsScreen').classList.contains('visible')){closeStems();return;}
     if(document.getElementById('pdfScreen').classList.contains('visible')){closePdf();return;}
   }
   if(e.key==='Enter'&&document.getElementById('modalOverlay').classList.contains('visible')){document.querySelector('.btn-ok')&&document.querySelector('.btn-ok').click();}

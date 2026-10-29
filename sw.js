@@ -15,10 +15,24 @@ self.addEventListener('activate',e=>{
     .then(()=>self.clients.claim()));
 });
 
+/* "isolamento" da página: libera o uso de vários núcleos no separador de faixas.
+   credentialless deixa as fontes e bibliotecas de outros sites continuarem carregando. */
+function isolate(res){
+  if(!res||res.status===0||res.type==='opaque')return res;
+  const h=new Headers(res.headers);
+  h.set('Cross-Origin-Opener-Policy','same-origin');
+  h.set('Cross-Origin-Embedder-Policy','credentialless');
+  return new Response(res.body,{status:res.status,statusText:res.statusText,headers:h});
+}
+
 self.addEventListener('fetch',e=>{
   const req=e.request;
   if(req.method!=='GET'||new URL(req.url).origin!==location.origin)return;
-  e.respondWith(caches.open(CACHE).then(async cache=>{
+  if(req.mode==='navigate'){e.respondWith(serve(e,req).then(isolate));return;}
+  e.respondWith(serve(e,req));
+});
+function serve(e,req){
+  return caches.open(CACHE).then(async cache=>{
     const cached=await cache.match(req,{ignoreSearch:true});
     const fresh=fetch(req).then(res=>{if(res&&res.ok)cache.put(req,res.clone());return res;}).catch(()=>null);
     if(cached){e.waitUntil(fresh);return cached;}
@@ -26,5 +40,5 @@ self.addEventListener('fetch',e=>{
     if(res)return res;
     if(req.mode==='navigate')return (await cache.match('./songbook.html'))||Response.error();
     return Response.error();
-  }));
-});
+  });
+}
