@@ -319,6 +319,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);heig
 .audio-note .an-del{display:none;margin-left:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.35);align-items:center;justify-content:center;font-size:14px;line-height:1;}
 .pdf-screen.tool-audio:not(.read-mode) .audio-note .an-del{display:flex;}
 .pdf-screen.tool-move:not(.read-mode) .audio-note{pointer-events:none;}
+.pdf-screen.tool-none .annot-layer{pointer-events:none !important;touch-action:pan-x pan-y pinch-zoom !important;}
 .note-rec-bar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:59;display:none;align-items:center;gap:12px;padding:8px 8px 8px 16px;border-radius:99px;background:#dc2626;color:#fff;font-family:'Outfit',sans-serif;font-size:15px;box-shadow:0 6px 20px rgba(0,0,0,.5);}
 .note-rec-bar.on{display:flex;}
 .note-rec-bar button{background:#fff;color:#dc2626;border:none;border-radius:99px;padding:8px 16px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;}
@@ -1574,7 +1575,7 @@ try{
 
 const TAG_COLORS=['#7c6af5','#f472b6','#fb923c','#4ade80','#38bdf8','#facc15','#a78bfa','#f87171','#34d399'];
 const PEN_COLORS=['#f87171','#fbbf24','#4ade80','#38bdf8','#a594f9','#f472b6','#ffffff','#1a1a22'];
-const APP_VERSION='1.20', APP_VERSION_DATE='04/11/2026'; // atualizar a cada publicação
+const APP_VERSION='1.21', APP_VERSION_DATE='04/11/2026'; // atualizar a cada publicação
 const LS_KEY='songbook_v5';
 const IDB_NAME='songbook_idb3';
 const SETTINGS_KEY='songbook_settings_v1';
@@ -1732,14 +1733,15 @@ function closeColorMenu(){const m=document.getElementById('colorMenu');if(m)m.cl
 
 /* ── TOOL ── */
 function setTool(t){
+  if(t===tool)t=null; // tocar na ferramenta ativa desliga: nenhuma ferramenta, o PDF só rola
   tool=t;closeColorMenu();
   ['Pen','Symbol','Music','Text','Audio','Move','Eraser'].forEach(n=>{const el=document.getElementById('t'+n);if(el)el.classList.toggle('on',n.toLowerCase()===t);});
   const ep=document.getElementById('tEditPdf');if(ep)ep.classList.toggle('on',t==='editpdf');
   document.getElementById('fontGrp').classList.toggle('visible',t==='text'||t==='move');
   document.getElementById('undoGrp').style.display=t==='move'?'none':'flex';
   document.getElementById('nudgeGrp').style.display=t==='move'?'flex':'none';
-  document.getElementById('sizeGrp').style.display=(t==='text'||t==='move'||t==='editpdf'||t==='symbol'||t==='music'||t==='audio')?'none':'flex';
-  const scr=document.getElementById('pdfScreen');scr.classList.toggle('tool-move',t==='move');scr.classList.toggle('tool-audio',t==='audio');
+  document.getElementById('sizeGrp').style.display=(!t||t==='text'||t==='move'||t==='editpdf'||t==='symbol'||t==='music'||t==='audio')?'none':'flex';
+  const scr=document.getElementById('pdfScreen');scr.classList.toggle('tool-move',t==='move');scr.classList.toggle('tool-none',!t);scr.classList.toggle('tool-audio',t==='audio');
   document.querySelectorAll('.word-hit').forEach(h=>h.style.pointerEvents=t==='editpdf'?'auto':'none');
   const cur=t==='audio'?'copy':t==='eraser'?'cell':t==='text'?'text':t==='move'?'grab':t==='editpdf'?'text':(t==='symbol'||t==='music')?'copy':'crosshair';
   document.querySelectorAll('.annot-layer').forEach(c=>c.style.cursor=cur);
@@ -3594,7 +3596,7 @@ function getPos(canvas,e){
 
 function onDown(canvas,pi,e){
   if(syncMode){syncTap={pi,x:e.clientX,y:e.clientY};return;}
-  e.preventDefault();if(readMode)return;
+  e.preventDefault();if(readMode||!tool)return;
   activeCanvas=canvas;activeCtx=canvas.getContext('2d');activePi=pi;
   if(tool==='editpdf'){
     const hit=nearestWordHit(canvas,e.clientX,e.clientY);
@@ -3816,7 +3818,7 @@ function confirmDeleteNote(el){
     }}
   ]);
 }
-/* player simples: um toque toca, outro pausa; no fim volta para o começo */
+/* player simples: um toque toca, outro para e volta para o começo */
 function updateNoteEl(){
   if(!notePlay)return;const a=notePlay.audio,el=notePlay.el;
   const on=!a.paused;el.classList.toggle('playing',on);
@@ -3824,7 +3826,7 @@ function updateNoteEl(){
   el.querySelector('.an-time').textContent=fmtTime(a.currentTime||0);
 }
 async function toggleNote(el){
-  if(notePlay&&notePlay.el===el){const a=notePlay.audio;if(a.paused)a.play().catch(()=>{});else a.pause();return;}
+  if(notePlay&&notePlay.el===el){stopNote();return;} // parar volta para o começo
   stopNote();
   const key=el.dataset.key;
   let r=null;try{r=await idbGet('audio',key);}catch(e){}
